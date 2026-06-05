@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuario {
+  id       String    @id @default(cuid())
+  nome     String
+  email    String    @unique
+  senha    String
+  role     Role      @default(PROJETISTA)
+  projetos Projeto[]
+}
+
+enum Role {
+  ADMIN
+  PROJETISTA
+}
+
+model Funcionario {
+  id       String    @id @default(cuid())
+  nome     String
+  funcao   String
+  projetos Projeto[]
+}
+
+model Projeto {
+  id           String        @id @default(cuid())
+  codigo       String        @unique
+  nome         String
+  qtdeMadeira  Float
+  status       StatusProjeto @default(ABERTO)
+  criadoPor    Usuario       @relation(fields: [usuarioId], references: [id])
+  usuarioId    String
+  funcionarios Funcionario[]
+  criadoEm     DateTime      @default(now())
+}
+
+enum StatusProjeto {
+  ABERTO
+  EM_ANDAMENTO
+  CONCLUIDO
+}
+
+model Cliente {
+  id       String   @id @default(cuid())
+  nome     String
+  telefone String?
+  criadoEm DateTime @default(now())
+}
+
+model Fornecedor {
+  id      String  @id @default(cuid())
+  nome    String
+  contato String?
+}
+
+model ItemEstoque {
+  id         String @id @default(cuid())
+  nome       String
+  quantidade Int    @default(0)
+  unidade    String
+}
