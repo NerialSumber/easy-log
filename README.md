@@ -4,7 +4,6 @@
 Sistema web de gestão logística (TCC) — dashboard, projetos, estoque, clientes e fornecedores.
 
 **Stack:** Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Prisma 7 · [Neon](https://neon.tech) (PostgreSQL)
-**Repositório:** https://github.com/mega-swampert/Easy-Log
 
 ---
 
