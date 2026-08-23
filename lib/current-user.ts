@@ -14,8 +14,17 @@ const GUEST: UserData = {
   iniciais: '--',
 };
 
-function subscribe() {
-  return () => undefined;
+let cachedRaw: string | null | undefined;
+let cachedUser: UserData = GUEST;
+
+function subscribe(onStoreChange: () => void) {
+  const onChange = () => {
+    cachedRaw = undefined;
+    onStoreChange();
+  };
+
+  window.addEventListener('storage', onChange);
+  return () => window.removeEventListener('storage', onChange);
 }
 
 function iniciaisDe(nome: string) {
@@ -31,21 +40,29 @@ function iniciaisDe(nome: string) {
 
 function readUser(): UserData {
   const stored = localStorage.getItem('current_user');
+  if (stored === cachedRaw) {
+    return cachedUser;
+  }
+
+  cachedRaw = stored;
   if (!stored) {
-    return GUEST;
+    cachedUser = GUEST;
+    return cachedUser;
   }
 
   try {
     const parsed = JSON.parse(stored) as { nome?: string; role?: string };
     const nome = parsed.nome || 'Usuário';
-    return {
+    cachedUser = {
       nome,
       role: parsed.role || 'Administrador',
       iniciais: iniciaisDe(nome),
     };
   } catch {
-    return GUEST;
+    cachedUser = GUEST;
   }
+
+  return cachedUser;
 }
 
 export function useCurrentUser() {
