@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,58 +15,46 @@ import {
   Save,
   ClipboardList,
 } from 'lucide-react';
-
-type UserDataType = {
-  nome: string;
-  role: string;
-  iniciais: string;
-};
+import { ClienteField } from '@/components/cliente-field';
+import { useCurrentUser } from '@/lib/current-user';
+import type { ClienteResumo } from '@/lib/types';
 
 export default function NovoProjeto() {
   const router = useRouter();
+  const userData = useCurrentUser();
 
-  const [userData, setUserData] = useState<UserDataType>({
-    nome: 'Carregando...',
-    role: 'Aguarde',
-    iniciais: '--',
-  });
-
-  // Estados atualizados com o Schema
   const [codigo, setCodigo] = useState('');
   const [nome, setNome] = useState('');
   const [qtdeMadeira, setQtdeMadeira] = useState('');
+  const [clienteId, setClienteId] = useState('');
+  const [clienteNome, setClienteNome] = useState('');
+  const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    const carregarUsuario = async () => {
-      const storedUser = localStorage.getItem('current_user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        const nomeCompleto = parsedUser.nome || 'Usuário';
-        const partesNome = nomeCompleto.trim().split(' ');
-        let iniciais = 'US';
-        if (partesNome.length >= 2) {
-          iniciais = (
-            partesNome[0][0] + partesNome[partesNome.length - 1][0]
-          ).toUpperCase();
-        } else if (partesNome[0].length >= 2) {
-          iniciais = partesNome[0].substring(0, 2).toUpperCase();
-        } else {
-          iniciais = partesNome[0].toUpperCase();
+    let cancelled = false;
+
+    fetch('/api/clientes', { cache: 'no-store' })
+      .then(async (res) => {
+        const data: unknown = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data)) {
+          setClientes(data as ClienteResumo[]);
         }
-        setUserData({
-          nome: nomeCompleto,
-          role: parsedUser.role || 'Administrador',
-          iniciais: iniciais,
-        });
-      } else {
-        window.location.href = '/login';
-      }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClientes([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
     };
-    carregarUsuario();
   }, []);
 
-  const handleSalvarProjeto = async (e: React.FormEvent) => {
+  const handleSalvarProjeto = async (e: FormEvent) => {
     e.preventDefault();
+    setSalvando(true);
 
     try {
       const response = await fetch('/api/projetos', {
@@ -78,25 +66,28 @@ export default function NovoProjeto() {
           codigo,
           nome,
           qtdeMadeira,
+          clienteId: clienteId === '__new__' ? undefined : clienteId,
+          clienteNome: clienteId === '__new__' ? clienteNome : undefined,
         }),
       });
 
       if (response.ok) {
         router.push('/projetos');
       } else {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         alert(`Erro do servidor: ${errorData.error || 'Não foi possível salvar.'}`);
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
       alert('Erro de conexão. Verifique se o servidor está rodando.');
+    } finally {
+      setSalvando(false);
     }
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
-      {/* Sidebar */}
-      <aside className="flex hidden w-64 flex-col bg-slate-900 text-slate-300 md:flex">
+      <aside className="hidden w-64 flex-col bg-slate-900 text-slate-300 md:flex">
         <div className="flex items-center gap-3 border-b border-slate-800 p-6">
           <Image
             src="/logo.jpg"
@@ -166,7 +157,6 @@ export default function NovoProjeto() {
         </div>
       </aside>
 
-      {/* Conteúdo Principal */}
       <main className="flex h-screen flex-1 flex-col overflow-hidden">
         <header className="flex items-center gap-4 border-b border-slate-200 bg-white px-8 py-5">
           <Link
@@ -178,8 +168,7 @@ export default function NovoProjeto() {
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Novo Projeto</h1>
             <p className="text-sm text-slate-500">
-              Preencha o código, nome e a quantidade de madeira para iniciar um novo
-              projeto.
+              Informe o cliente, o código e os dados iniciais do projeto.
             </p>
           </div>
         </header>
@@ -194,6 +183,17 @@ export default function NovoProjeto() {
             </div>
 
             <form onSubmit={handleSalvarProjeto} className="space-y-6 p-6">
+              <ClienteField
+                clientes={clientes}
+                clienteId={clienteId}
+                clienteNome={clienteNome}
+                onClienteIdChange={(value) => {
+                  setClienteId(value);
+                  setClienteNome('');
+                }}
+                onClienteNomeChange={setClienteNome}
+              />
+
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-800">
@@ -248,10 +248,11 @@ export default function NovoProjeto() {
                 </Link>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700"
+                  disabled={salvando}
+                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 disabled:opacity-60"
                 >
                   <Save className="h-4 w-4" />
-                  Salvar Projeto
+                  {salvando ? 'Salvando...' : 'Salvar Projeto'}
                 </button>
               </div>
             </form>

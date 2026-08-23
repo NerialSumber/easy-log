@@ -35,6 +35,8 @@ model Projeto {
   status       StatusProjeto @default(ABERTO)
   criadoPor    Usuario       @relation(fields: [usuarioId], references: [id])
   usuarioId    String
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id])
+  clienteId    String?
   funcionarios Funcionario[]
   criadoEm     DateTime      @default(now())
 }
@@ -46,10 +48,11 @@ enum StatusProjeto {
 }
 
 model Cliente {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   nome     String
   telefone String?
-  criadoEm DateTime @default(now())
+  criadoEm DateTime  @default(now())
+  projetos Projeto[]
 }
 
 model Fornecedor {

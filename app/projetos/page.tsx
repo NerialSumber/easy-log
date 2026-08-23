@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -17,108 +17,189 @@ import {
   X,
   Save,
 } from 'lucide-react';
+import { ClienteField } from '@/components/cliente-field';
+import { useCurrentUser } from '@/lib/current-user';
+import type { ClienteResumo, ProjetoLista, StatusProjeto } from '@/lib/types';
 
-type UserDataType = { nome: string; role: string; iniciais: string };
+type ProjetoEdicao = {
+  id: string;
+  codigo: string;
+  nome: string;
+  qtdeMadeira: string;
+  status: StatusProjeto;
+  clienteId: string;
+  clienteNome: string;
+};
+
+function formatarDataHora(iso: string) {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(data);
+}
+
+function toEdicao(projeto: ProjetoLista): ProjetoEdicao {
+  return {
+    id: projeto.id,
+    codigo: projeto.codigo,
+    nome: projeto.nome,
+    qtdeMadeira: String(projeto.qtdeMadeira ?? 0),
+    status: projeto.status,
+    clienteId: projeto.cliente?.id ?? projeto.clienteId ?? '',
+    clienteNome: '',
+  };
+}
 
 export default function ProjetosCRUD() {
-  const [userData, setUserData] = useState<UserDataType>({
-    nome: 'Carregando...',
-    role: 'Aguarde',
-    iniciais: '--',
-  });
-
-  const [projetos, setProjetos] = useState<any[]>([]);
+  const userData = useCurrentUser();
+  const [projetos, setProjetos] = useState<ProjetoLista[]>([]);
+  const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [projetoEditando, setProjetoEditando] = useState<ProjetoEdicao | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [projetoEditando, setProjetoEditando] = useState<any>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('current_user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      const partesNome = (parsedUser.nome || 'Usuário').trim().split(' ');
-      let iniciais = 'US';
-      if (partesNome.length >= 2)
-        iniciais = (
-          partesNome[0][0] + partesNome[partesNome.length - 1][0]
-        ).toUpperCase();
-      else if (partesNome[0].length >= 2)
-        iniciais = partesNome[0].substring(0, 2).toUpperCase();
-      else iniciais = partesNome[0].toUpperCase();
-      setUserData({
-        nome: parsedUser.nome || 'Usuário',
-        role: parsedUser.role || 'Administrador',
-        iniciais,
-      });
-    }
-
-    fetchProjetos();
-  }, []);
-
-  const fetchProjetos = async () => {
+  const fetchProjetos = useCallback(async () => {
     try {
-      // O 'no-store' força o Next.js a sempre buscar do banco real, matando o cache
       const res = await fetch('/api/projetos', { cache: 'no-store' });
-      const data = await res.json();
-
-      if (res.ok && Array.isArray(data)) {
-        setProjetos(data);
-      } else {
-        setProjetos([]);
-      }
-    } catch (error) {
+      const data: unknown = await res.json();
+      setProjetos(res.ok && Array.isArray(data) ? (data as ProjetoLista[]) : []);
+    } catch {
       setProjetos([]);
     } finally {
       setCarregando(false);
     }
-  };
+  }, []);
+
+  const fetchClientes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clientes', { cache: 'no-store' });
+      const data: unknown = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setClientes(data as ClienteResumo[]);
+      }
+    } catch {
+      setClientes([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/projetos', { cache: 'no-store' })
+      .then(async (res) => {
+        const data: unknown = await res.json();
+        if (!cancelled) {
+          setProjetos(res.ok && Array.isArray(data) ? (data as ProjetoLista[]) : []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProjetos([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCarregando(false);
+        }
+      });
+
+    fetch('/api/clientes', { cache: 'no-store' })
+      .then(async (res) => {
+        const data: unknown = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data)) {
+          setClientes(data as ClienteResumo[]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClientes([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const projetosFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) {
+      return projetos;
+    }
+
+    return projetos.filter((projeto) => {
+      const cliente = projeto.cliente?.nome ?? '';
+      return (
+        projeto.nome.toLowerCase().includes(termo) ||
+        projeto.codigo.toLowerCase().includes(termo) ||
+        cliente.toLowerCase().includes(termo)
+      );
+    });
+  }, [projetos, busca]);
 
   const handleExcluir = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este projeto?')) {
-      try {
-        const res = await fetch(`/api/projetos/${id}`, { method: 'DELETE' });
+    if (!confirm('Tem certeza que deseja excluir este projeto?')) {
+      return;
+    }
 
-        // Agora a tela SÓ remove o item se o banco confirmou que deu certo!
-        if (res.ok) {
-          setProjetos(projetos.filter((p) => p.id !== id));
-        } else {
-          alert('Erro do Servidor: O banco recusou a exclusão.');
-        }
-      } catch (error) {
-        alert('Erro de conexão ao tentar excluir.');
+    try {
+      const res = await fetch(`/api/projetos/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setProjetos((atual) => atual.filter((projeto) => projeto.id !== id));
+      } else {
+        alert('Erro do servidor: o banco recusou a exclusão.');
       }
+    } catch {
+      alert('Erro de conexão ao tentar excluir.');
     }
   };
 
-  const abrirModalEditar = (projeto: any) => {
-    setProjetoEditando({ ...projeto });
-    setIsModalOpen(true);
-  };
-
-  const handleSalvarEdicao = async (e: React.FormEvent) => {
+  const handleSalvarEdicao = async (e: FormEvent) => {
     e.preventDefault();
+    if (!projetoEditando) {
+      return;
+    }
+
+    setSalvando(true);
     try {
       const res = await fetch(`/api/projetos/${projetoEditando.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projetoEditando),
+        body: JSON.stringify({
+          codigo: projetoEditando.codigo,
+          nome: projetoEditando.nome,
+          qtdeMadeira: projetoEditando.qtdeMadeira,
+          status: projetoEditando.status,
+          clienteId:
+            projetoEditando.clienteId === '__new__' ? undefined : projetoEditando.clienteId,
+          clienteNome:
+            projetoEditando.clienteId === '__new__' ? projetoEditando.clienteNome : undefined,
+        }),
       });
 
       if (res.ok) {
-        setIsModalOpen(false);
-        fetchProjetos();
+        setProjetoEditando(null);
+        await Promise.all([fetchProjetos(), fetchClientes()]);
       } else {
-        alert('Erro ao atualizar no servidor.');
+        const errorData = (await res.json()) as { error?: string };
+        alert(errorData.error || 'Erro ao atualizar no servidor.');
       }
-    } catch (error) {
+    } catch {
       alert('Erro ao salvar as edições.');
+    } finally {
+      setSalvando(false);
     }
   };
 
   return (
     <div className="relative flex min-h-screen bg-slate-50 font-sans">
-      <aside className="flex hidden w-64 flex-col bg-slate-900 text-slate-300 md:flex">
+      <aside className="hidden w-64 flex-col bg-slate-900 text-slate-300 md:flex">
         <div className="flex items-center gap-3 border-b border-slate-800 p-6">
           <Image
             src="/logo.jpg"
@@ -149,6 +230,18 @@ export default function ProjetosCRUD() {
           >
             <Package className="h-5 w-5" /> Estoque
           </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
+          >
+            <Users className="h-5 w-5" /> Clientes
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
+          >
+            <Truck className="h-5 w-5" /> Fornecedores
+          </Link>
         </nav>
 
         <div className="border-t border-slate-800 p-4">
@@ -177,7 +270,12 @@ export default function ProjetosCRUD() {
 
       <main className="flex h-screen flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
-          <h1 className="text-2xl font-bold text-slate-800">Gerenciamento de Projetos</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Gerenciamento de Projetos</h1>
+            <p className="text-sm text-slate-500">
+              Liste, busque, crie, edite e exclua os projetos em andamento.
+            </p>
+          </div>
           <Link
             href="/projetos/novo"
             className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-orange-700"
@@ -193,9 +291,11 @@ export default function ProjetosCRUD() {
                 <Search className="h-5 w-5 text-slate-400" />
               </div>
               <input
-                type="text"
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
                 className="block w-full rounded-lg border border-slate-300 py-2 pr-3 pl-10 text-sm outline-none focus:border-orange-600 focus:ring-orange-600"
-                placeholder="Buscar projeto..."
+                placeholder="Buscar por nome, código ou cliente..."
               />
             </div>
           </div>
@@ -205,16 +305,13 @@ export default function ProjetosCRUD() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Código
+                    Nome
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Projeto
+                    Data e hora
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Madeira
+                    Cliente
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">
                     Ações
@@ -224,55 +321,44 @@ export default function ProjetosCRUD() {
               <tbody className="divide-y divide-slate-200 bg-white">
                 {carregando ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-slate-500">
+                    <td colSpan={4} className="px-6 py-4 text-center text-slate-500">
                       Carregando projetos...
                     </td>
                   </tr>
-                ) : projetos.length === 0 ? (
+                ) : projetosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-slate-500">
-                      Nenhum projeto cadastrado.
+                    <td colSpan={4} className="px-6 py-4 text-center text-slate-500">
+                      {busca.trim()
+                        ? 'Nenhum projeto encontrado para esta busca.'
+                        : 'Nenhum projeto cadastrado.'}
                     </td>
                   </tr>
                 ) : (
-                  projetos.map((projeto) => (
+                  projetosFiltrados.map((projeto) => (
                     <tr key={projeto.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-bold whitespace-nowrap text-slate-900">
-                        {projeto.codigo}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-slate-700">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
                         {projeto.nome}
                       </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                            projeto.status === 'ABERTO'
-                              ? 'bg-blue-100 text-blue-700'
-                              : projeto.status === 'EM_ANDAMENTO'
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-green-100 text-green-700'
-                          }`}
-                        >
-                          {projeto.status.replace('_', ' ')}
-                        </span>
-                      </td>
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-slate-500">
-                        {projeto.qtdeMadeira} m²
+                        {formatarDataHora(projeto.criadoEm)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {projeto.cliente?.nome ?? '—'}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
                         <button
-                          onClick={() => abrirModalEditar(projeto)}
-                          className="mr-4 text-slate-400 transition-colors hover:text-orange-600"
-                          title="Editar"
+                          type="button"
+                          onClick={() => setProjetoEditando(toEdicao(projeto))}
+                          className="mr-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-orange-600 transition-colors hover:bg-orange-50"
                         >
-                          <Pencil className="inline h-5 w-5" />
+                          <Pencil className="h-4 w-4" /> Editar
                         </button>
                         <button
-                          onClick={() => handleExcluir(projeto.id)}
-                          className="text-slate-400 transition-colors hover:text-red-600"
-                          title="Excluir"
+                          type="button"
+                          onClick={() => void handleExcluir(projeto.id)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-red-600 transition-colors hover:bg-red-50"
                         >
-                          <Trash2 className="inline h-5 w-5" />
+                          <Trash2 className="h-4 w-4" /> Excluir
                         </button>
                       </td>
                     </tr>
@@ -284,14 +370,14 @@ export default function ProjetosCRUD() {
         </div>
       </main>
 
-      {/* Modal de Edição Sobreposto */}
-      {isModalOpen && projetoEditando && (
+      {projetoEditando && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-xl font-bold text-slate-800">Editar Projeto</h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                type="button"
+                onClick={() => setProjetoEditando(null)}
                 className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -324,7 +410,10 @@ export default function ProjetosCRUD() {
                   <select
                     value={projetoEditando.status}
                     onChange={(e) =>
-                      setProjetoEditando({ ...projetoEditando, status: e.target.value })
+                      setProjetoEditando({
+                        ...projetoEditando,
+                        status: e.target.value as StatusProjeto,
+                      })
                     }
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-orange-500"
                   >
@@ -345,6 +434,19 @@ export default function ProjetosCRUD() {
                       setProjetoEditando({ ...projetoEditando, nome: e.target.value })
                     }
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <ClienteField
+                    clientes={clientes}
+                    clienteId={projetoEditando.clienteId}
+                    clienteNome={projetoEditando.clienteNome}
+                    onClienteIdChange={(clienteId) =>
+                      setProjetoEditando({ ...projetoEditando, clienteId, clienteNome: '' })
+                    }
+                    onClienteNomeChange={(clienteNome) =>
+                      setProjetoEditando({ ...projetoEditando, clienteNome })
+                    }
                   />
                 </div>
                 <div>
@@ -370,16 +472,17 @@ export default function ProjetosCRUD() {
               <div className="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setProjetoEditando(null)}
                   className="rounded-lg px-5 py-2.5 font-bold text-slate-600 transition-colors hover:bg-slate-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-5 py-2.5 font-bold text-white transition-colors hover:bg-orange-700"
+                  disabled={salvando}
+                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-5 py-2.5 font-bold text-white transition-colors hover:bg-orange-700 disabled:opacity-60"
                 >
-                  <Save className="h-4 w-4" /> Salvar Alterações
+                  <Save className="h-4 w-4" /> {salvando ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>
