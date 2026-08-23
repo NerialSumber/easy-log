@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { prisma } from '@/lib/prisma';
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-// Ajustado para aceitar params da forma mais segura
-export async function PUT(request: Request, { params }: { params: any }) {
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const { id } = await params;
 
     const body = await request.json();
     const { codigo, nome, qtdeMadeira, status } = body;
@@ -29,23 +23,23 @@ export async function PUT(request: Request, { params }: { params: any }) {
 
     return NextResponse.json(projetoAtualizado);
   } catch (error) {
-    // AGORA SIM ELE VAI GRITAR NO TERMINAL
     console.error('ERRO AO ATUALIZAR PROJETO:', error);
     return NextResponse.json({ error: 'Erro ao atualizar' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: any }) {
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const { id } = await params;
 
     await prisma.projeto.delete({
       where: { id },
     });
     return NextResponse.json({ message: 'Excluído com sucesso' });
   } catch (error) {
-    // AGORA SIM ELE VAI GRITAR NO TERMINAL
     console.error('ERRO AO EXCLUIR PROJETO:', error);
     return NextResponse.json({ error: 'Erro ao excluir' }, { status: 500 });
   }

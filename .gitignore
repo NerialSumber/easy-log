@@ -31,8 +31,8 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (Next.js — never commit secrets)
-.env
-.env*.local
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,5 +40,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-/app/generated/prisma

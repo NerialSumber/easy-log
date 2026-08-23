@@ -31,7 +31,7 @@ model Projeto {
   id           String        @id @default(cuid())
   codigo       String        @unique
   nome         String
-  qtdeMadeira  Float
+  qtdeMadeira  Float         @default(0)
   status       StatusProjeto @default(ABERTO)
   criadoPor    Usuario       @relation(fields: [usuarioId], references: [id])
   usuarioId    String
@@ -63,4 +63,16 @@ model ItemEstoque {
   nome       String
   quantidade Int    @default(0)
   unidade    String
+}
+
+model Maquina {
+  id     String        @id @default(cuid())
+  nome   String
+  estado EstadoMaquina @default(ATIVA)
+}
+
+enum EstadoMaquina {
+  ATIVA
+  EM_MANUTENCAO
+  INATIVA
 }

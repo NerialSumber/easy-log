@@ -13,7 +13,7 @@ Instale antes de clonar o projeto:
 
 | Ferramenta | Versão recomendada | Observação |
 |------------|-------------------|------------|
-| [Node.js](https://nodejs.org/) | 20 LTS ou superior | Necessário para Next.js, Prisma e scripts npm |
+| [Node.js](https://nodejs.org/) | 20.19+, 22.12+ ou 24+ | Exigido pelo Next.js 16 e pelo Prisma 7 |
 | [Git](https://git-scm.com/) | Qualquer versão recente | Para clonar e versionar o código |
 | Conta no [Neon](https://neon.tech) | Gratuita | Banco PostgreSQL na nuvem usado pelo Prisma |
 | [Cursor](https://cursor.com/) ou [VS Code](https://code.visualstudio.com/) | Opcional | Editor recomendado para o time |
@@ -27,8 +27,8 @@ Siga a ordem abaixo na primeira vez que for usar o repositório.
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/mega-swampert/Easy-Log.git
-cd Easy-Log
+git clone https://github.com/NerialSumber/easy-log.git
+cd easy-log
 ```
 
 Se você já tem o projeto localmente, entre na pasta do projeto:
@@ -43,31 +43,25 @@ cd easy-log
 npm install
 ```
 
-Isso instala Next.js, React, Prisma, ESLint, Prettier e demais pacotes listados em `package.json`.
+Isso instala Next.js, React, Prisma, ESLint, Prettier e demais pacotes listados em `package.json`. O script `postinstall` já roda `prisma generate`.
 
 ### 3. Configurar variáveis de ambiente (Next.js)
 
 O Next.js carrega arquivos `.env*` automaticamente na **raiz do projeto** (não dentro de `app/`). Para segredos locais em desenvolvimento, use **`.env.local`** — padrão do Next.js e ignorado pelo Git.
 
-Crie o arquivo na raiz:
+Copie o template e cole a **connection string do Neon**. **Não use o prefixo `NEXT_PUBLIC_`**: `DATABASE_URL` fica disponível só no servidor (`process.env.DATABASE_URL` em Route Handlers e Prisma).
 
 ```bash
-# Git Bash
-touch .env.local
+# Git Bash / macOS / Linux
+cp .env.example .env.local
 ```
 
 ```powershell
 # PowerShell
-New-Item .env.local -ItemType File
+Copy-Item .env.example .env.local
 ```
 
-Cole a **connection string do Neon**. **Não use o prefixo `NEXT_PUBLIC_`**: `DATABASE_URL` fica disponível só no servidor (`process.env.DATABASE_URL` em Server Components, Route Handlers e Prisma).
-
-```env
-DATABASE_URL="postgresql://USUARIO:SENHA@ep-xxxx.sa-east-1.aws.neon.tech/neondb?sslmode=require"
-```
-
-Use a string **exata** copiada do painel do Neon (host, usuário, senha e nome do banco já vêm prontos). O parâmetro `sslmode=require` é obrigatório no Neon.
+Edite `.env.local` e troque o valor de `DATABASE_URL` pela string **exata** do painel do Neon (host, usuário, senha e nome do banco já vêm prontos). O parâmetro `sslmode=require` é obrigatório.
 
 > Peça a connection string ao responsável do time se o projeto Neon for compartilhado. **Nunca commite `.env.local` nem `.env`.**
 >
@@ -88,18 +82,18 @@ No Neon, o banco e o usuário já vêm criados — não é preciso rodar `CREATE
 Com `.env.local` configurado com a URL do Neon:
 
 ```bash
-npx prisma migrate dev
+npm run db:migrate
 ```
 
-Na primeira execução, isso aplica as migrations em `prisma/migrations/` e cria as tabelas no banco.
+Na primeira execução, isso aplica as migrations em `prisma/migrations/` e cria as tabelas no banco. O Prisma Client é gerado em `node_modules/@prisma/client` (`npm install` já faz isso via `postinstall`).
 
-Em seguida, gere o client (saída em `app/generated/prisma`, também ignorada pelo Git):
+Se precisar gerar o client de novo:
 
 ```bash
-npx prisma generate
+npm run db:generate
 ```
 
-> Sempre que alguém alterar `prisma/schema.prisma` ou houver migrations novas, rode de novo `npx prisma migrate dev` e `npx prisma generate`.
+> Sempre que alguém alterar `prisma/schema.prisma` ou houver migrations novas, rode de novo `npm run db:migrate` e `npm run db:generate`.
 >
 > Se alterar variáveis de ambiente depois de subir o app, reinicie o servidor (`Ctrl+C` e `npm run dev` de novo).
 
@@ -123,7 +117,7 @@ Rotas principais hoje:
 
 ```bash
 npm run lint
-npm run format
+npm run format:fix
 ```
 
 ---
@@ -135,6 +129,7 @@ O repositório inclui `.vscode/settings.json` para padronizar o time:
 - **Format on save** com Prettier
 - **ESLint fix on save**
 - **TypeScript** do próprio projeto (`node_modules/typescript`)
+- **Extensões recomendadas** em `.vscode/extensions.json` (Prettier, ESLint e Prisma)
 
 ### Extensões obrigatórias
 
@@ -142,12 +137,14 @@ Instale no Cursor ou VS Code (`Ctrl+Shift+X`):
 
 1. **Prettier - Code formatter** — `esbenp.prettier-vscode`
 2. **ESLint** — `dbaeumer.vscode-eslint`
+3. **Prisma** — `Prisma.prisma` (syntax highlight do `schema.prisma`)
 
 Via terminal (Cursor):
 
 ```bash
 cursor --install-extension esbenp.prettier-vscode
 cursor --install-extension dbaeumer.vscode-eslint
+cursor --install-extension Prisma.prisma
 ```
 
 Depois: **Ctrl+Shift+P** → `Developer: Reload Window`.
@@ -182,14 +179,18 @@ Ajuste `path` se o Git estiver em outro disco (ex.: `D:\\Git\\bin\\bash.exe`).
 | `npm run build` | Build de produção |
 | `npm run start` | Servidor após `build` |
 | `npm run lint` | Verifica o código com ESLint |
-| `npm run format` | Formata o projeto com Prettier |
+| `npm run format` | Verifica se o código está formatado (Prettier) |
+| `npm run format:fix` | Formata o projeto com Prettier |
+| `npm run db:migrate` | Aplica migrations em desenvolvimento |
+| `npm run db:generate` | Gera o Prisma Client |
+| `npm run db:studio` | Abre o Prisma Studio |
 
 ### Comandos Prisma úteis
 
 | Comando | Descrição |
 |---------|-----------|
 | `npx prisma migrate dev` | Aplica migrations em desenvolvimento |
-| `npx prisma generate` | Gera o client em `app/generated/prisma` |
+| `npx prisma generate` | Gera o client em `node_modules/@prisma/client` |
 | `npx prisma studio` | Interface visual para ver/editar dados |
 | `npx prisma db pull` | Atualiza o schema a partir do banco existente |
 
@@ -202,13 +203,17 @@ easy-log/
 ├── app/                 # Rotas e páginas (App Router)
 │   ├── login/
 │   ├── projetos/
-│   └── generated/prisma # Client gerado (não commitar)
+│   └── api/
+├── lib/
+│   └── prisma.ts        # Cliente Prisma compartilhado
 ├── prisma/
 │   ├── schema.prisma    # Modelos do banco
 │   └── migrations/      # Histórico SQL
 ├── .vscode/
-│   └── settings.json    # Config do editor no projeto
-├── .env.local           # Variáveis locais (criar você — não commitar)
+│   ├── settings.json    # Config do editor no projeto
+│   └── extensions.json  # Extensões recomendadas
+├── .env.example         # Template das variáveis (commitado)
+├── .env.local           # Segredos locais (criar você — não commitar)
 ├── prisma.config.ts     # Config do Prisma (carrega .env* via @next/env)
 └── package.json
 ```
@@ -235,14 +240,14 @@ Abra um Pull Request no GitHub para integrar em `main`.
 
 ## Checklist rápido (primeira vez)
 
-- [ ] Node.js 20+ instalado
+- [ ] Node.js 20.19+, 22.12+ ou 24+ instalado
 - [ ] Conta no Neon criada
 - [ ] `git clone` feito
 - [ ] `npm install` executado
 - [ ] Projeto criado no Neon e connection string copiada
-- [ ] Arquivo `.env.local` criado com `DATABASE_URL` do Neon
-- [ ] `npx prisma migrate dev` executado sem erro
-- [ ] `npx prisma generate` executado
+- [ ] Arquivo `.env.local` copiado de `.env.example` com `DATABASE_URL` do Neon
+- [ ] `npm run db:migrate` executado sem erro
+- [ ] `npm run db:generate` executado (também roda no `npm install`)
 - [ ] Extensões Prettier e ESLint instaladas no editor
 - [ ] `npm run dev` abre http://localhost:3000
 
@@ -269,12 +274,12 @@ Abra um Pull Request no GitHub para integrar em `main`.
 - Recarregue a janela do editor.
 - Confira se abriu a pasta **raiz** do projeto (onde está `.vscode/`).
 
-### Pasta `app/generated/prisma` ausente
+### Prisma Client não encontrado (`@prisma/client`)
 
 Rode:
 
 ```bash
-npx prisma generate
+npm run db:generate
 ```
 
 ---

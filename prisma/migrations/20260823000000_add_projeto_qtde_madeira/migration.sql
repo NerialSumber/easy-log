@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Projeto" ADD COLUMN "qtdeMadeira" DOUBLE PRECISION NOT NULL DEFAULT 0;
