@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { Filter, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { ClienteField } from '@/components/cliente-field';
 import { PageHeader } from '@/components/page-header';
@@ -34,6 +34,15 @@ function formatarMadeira(valor: number) {
   }).format(valor);
 }
 
+type CampoFiltro = 'todos' | 'nome' | 'data' | 'cliente' | 'status';
+
+const STATUS_FILTRO: StatusProjeto[] = [
+  'ABERTO',
+  'EM_ANDAMENTO',
+  'CONCLUIDO',
+  'ATRASADO',
+];
+
 function toEdicao(projeto: ProjetoLista): ProjetoEdicao {
   return {
     id: projeto.id,
@@ -48,10 +57,99 @@ function toEdicao(projeto: ProjetoLista): ProjetoEdicao {
   };
 }
 
+function coincideTexto(valor: string, termo: string) {
+  return valor.toLowerCase().includes(termo);
+}
+
+function projetoNoDia(projeto: ProjetoLista, dia: string) {
+  const inicio = toInputDate(projeto.dataInicio);
+  const fim = toInputDate(projeto.dataFim);
+
+  if (!inicio && !fim) {
+    return false;
+  }
+
+  if (inicio && fim) {
+    return dia >= inicio && dia <= fim;
+  }
+
+  return dia === inicio || dia === fim;
+}
+
+function filtrarProjetos(
+  projetos: ProjetoLista[],
+  busca: string,
+  filtro: CampoFiltro,
+) {
+  const termoBruto = busca.trim();
+  const termo = termoBruto.toLowerCase();
+  if (!termo) {
+    return projetos;
+  }
+
+  const buscaPorDataIso = /^\d{4}-\d{2}-\d{2}$/.test(termoBruto);
+
+  return projetos.filter((projeto) => {
+    const cliente = projeto.cliente?.nome ?? '';
+    const periodo = formatarPeriodo(projeto.dataInicio, projeto.dataFim);
+
+    if (filtro === 'nome') {
+      return coincideTexto(projeto.nome, termo);
+    }
+
+    if (filtro === 'cliente') {
+      return coincideTexto(cliente, termo);
+    }
+
+    if (filtro === 'data') {
+      if (buscaPorDataIso) {
+        return projetoNoDia(projeto, termoBruto);
+      }
+
+      return coincideTexto(periodo, termo);
+    }
+
+    if (filtro === 'status') {
+      return projeto.status === termoBruto;
+    }
+
+    return (
+      coincideTexto(projeto.nome, termo) ||
+      coincideTexto(projeto.codigo, termo) ||
+      coincideTexto(cliente, termo) ||
+      coincideTexto(periodo, termo) ||
+      coincideTexto(rotuloStatus(projeto.status), termo) ||
+      coincideTexto(projeto.status, termo) ||
+      (buscaPorDataIso && projetoNoDia(projeto, termoBruto))
+    );
+  });
+}
+
+function placeholderBusca(filtro: CampoFiltro) {
+  if (filtro === 'nome') {
+    return 'Buscar por nome...';
+  }
+
+  if (filtro === 'cliente') {
+    return 'Buscar por cliente...';
+  }
+
+  if (filtro === 'data') {
+    return 'Selecionar data';
+  }
+
+  if (filtro === 'status') {
+    return 'Selecionar status';
+  }
+
+  return 'Buscar por nome, data, cliente ou status...';
+}
+
 export default function ProjetosCRUD() {
   const [projetos, setProjetos] = useState<ProjetoLista[]>([]);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<CampoFiltro>('todos');
   const [carregando, setCarregando] = useState(true);
   const [projetoDetalhe, setProjetoDetalhe] = useState<ProjetoLista | null>(null);
   const [projetoEditando, setProjetoEditando] = useState<ProjetoEdicao | null>(null);
@@ -120,21 +218,12 @@ export default function ProjetosCRUD() {
     };
   }, []);
 
-  const projetosFiltrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    if (!termo) {
-      return projetos;
-    }
+  const projetosFiltrados = useMemo(
+    () => filtrarProjetos(projetos, busca, filtro),
+    [projetos, busca, filtro],
+  );
 
-    return projetos.filter((projeto) => {
-      const cliente = projeto.cliente?.nome ?? '';
-      return (
-        projeto.nome.toLowerCase().includes(termo) ||
-        projeto.codigo.toLowerCase().includes(termo) ||
-        cliente.toLowerCase().includes(termo)
-      );
-    });
-  }, [projetos, busca]);
+  const temFiltroAtivo = busca.trim().length > 0;
 
   const handleExcluir = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este projeto?')) {
@@ -217,16 +306,58 @@ export default function ProjetosCRUD() {
       }
     >
       <div className="flex flex-col gap-6">
-        <div className="flex w-full max-w-[448px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
-          <Search className="size-5 shrink-0 text-[#94a3b8]" />
-          <input
-            type="search"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
-            placeholder="Buscar por nome, código ou cliente..."
-          />
-        </div>
+        <form
+          role="search"
+          onSubmit={(event) => event.preventDefault()}
+          className="flex w-full flex-col gap-3 sm:flex-row sm:items-center"
+        >
+          <div className="flex w-full max-w-[448px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
+            <Search className="size-5 shrink-0 text-[#94a3b8]" />
+            {filtro === 'status' ? (
+              <select
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none"
+                aria-label="Filtrar por status"
+              >
+                <option value="">Todos os status</option>
+                {STATUS_FILTRO.map((status) => (
+                  <option key={status} value={status}>
+                    {rotuloStatus(status)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type={filtro === 'data' ? 'date' : 'search'}
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
+                placeholder={placeholderBusca(filtro)}
+                aria-label={placeholderBusca(filtro)}
+              />
+            )}
+          </div>
+
+          <div className="flex w-full max-w-[220px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
+            <Filter className="size-5 shrink-0 text-[#94a3b8]" />
+            <select
+              value={filtro}
+              onChange={(e) => {
+                setFiltro(e.target.value as CampoFiltro);
+                setBusca('');
+              }}
+              className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none"
+              aria-label="Filtrar por"
+            >
+              <option value="todos">Todos os campos</option>
+              <option value="nome">Nome</option>
+              <option value="data">Data</option>
+              <option value="cliente">Cliente</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+        </form>
 
         <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
           <table className="min-w-full">
@@ -256,7 +387,7 @@ export default function ProjetosCRUD() {
               ) : projetosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-4 text-center text-[#64748b]">
-                    {busca.trim()
+                    {temFiltroAtivo
                       ? 'Nenhum projeto encontrado para esta busca.'
                       : 'Nenhum projeto cadastrado.'}
                   </td>
