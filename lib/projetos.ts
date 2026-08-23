@@ -56,6 +56,51 @@ export async function resolveClienteId(
   return criado.id;
 }
 
+const STATUS_PROJETO = ['ABERTO', 'EM_ANDAMENTO', 'CONCLUIDO', 'ATRASADO'] as const;
+
+function parseDataCampo(value: unknown): Date | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  const data =
+    trimmed.length === 10 ? new Date(`${trimmed}T00:00:00`) : new Date(trimmed);
+  if (Number.isNaN(data.getTime())) {
+    return null;
+  }
+
+  return data;
+}
+
+export function parsePeriodoProjeto(dataInicio: unknown, dataFim: unknown) {
+  const inicio = parseDataCampo(dataInicio);
+  const fim = parseDataCampo(dataFim);
+
+  if (!inicio || !fim) {
+    return { ok: false as const, error: 'Informe a data de início e a data de fim.' };
+  }
+
+  if (fim < inicio) {
+    return {
+      ok: false as const,
+      error: 'A data de fim deve ser igual ou posterior à data de início.',
+    };
+  }
+
+  return { ok: true as const, dataInicio: inicio, dataFim: fim };
+}
+
+export function parseStatusProjeto(value: unknown) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return STATUS_PROJETO.includes(value as (typeof STATUS_PROJETO)[number])
+    ? (value as (typeof STATUS_PROJETO)[number])
+    : null;
+}
+
 export function prismaErrorMessage(error: unknown, fallback: string) {
   if (
     typeof error === 'object' &&

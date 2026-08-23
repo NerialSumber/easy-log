@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   ensureUsuarioPadrao,
+  parsePeriodoProjeto,
   prismaErrorMessage,
   projetoInclude,
   resolveClienteId,
@@ -25,13 +26,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { codigo, nome, qtdeMadeira, clienteId, clienteNome } = body;
+    const { codigo, nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } =
+      body;
 
     if (!codigo?.trim() || !nome?.trim()) {
       return NextResponse.json(
         { error: 'Código e nome do projeto são obrigatórios.' },
         { status: 400 },
       );
+    }
+
+    const periodo = parsePeriodoProjeto(dataInicio, dataFim);
+    if (!periodo.ok) {
+      return NextResponse.json({ error: periodo.error }, { status: 400 });
     }
 
     const resolvedClienteId = await resolveClienteId(clienteId, clienteNome);
@@ -52,6 +59,8 @@ export async function POST(request: Request) {
         status: 'ABERTO',
         usuarioId: usuarioPadrao.id,
         clienteId: resolvedClienteId,
+        dataInicio: periodo.dataInicio,
+        dataFim: periodo.dataFim,
       },
       include: projetoInclude,
     });

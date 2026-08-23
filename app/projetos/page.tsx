@@ -1,24 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import {
-  LayoutDashboard,
-  FolderKanban,
-  Package,
-  Users,
-  Truck,
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  LogOut,
-  X,
-  Save,
-} from 'lucide-react';
+import { Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { AppShell } from '@/components/app-shell';
 import { ClienteField } from '@/components/cliente-field';
-import { useCurrentUser } from '@/lib/current-user';
+import { PageHeader } from '@/components/page-header';
+import { PeriodoField } from '@/components/periodo-field';
+import { formatarData, formatarPeriodo, toInputDate } from '@/lib/datas';
+import {
+  classesStatusModal,
+  classesStatusTabela,
+  rotuloStatus,
+} from '@/lib/status-projeto';
 import type { ClienteResumo, ProjetoLista, StatusProjeto } from '@/lib/types';
 
 type ProjetoEdicao = {
@@ -27,20 +21,17 @@ type ProjetoEdicao = {
   nome: string;
   qtdeMadeira: string;
   status: StatusProjeto;
+  dataInicio: string;
+  dataFim: string;
   clienteId: string;
   clienteNome: string;
 };
 
-function formatarDataHora(iso: string) {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(data);
+function formatarMadeira(valor: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor);
 }
 
 function toEdicao(projeto: ProjetoLista): ProjetoEdicao {
@@ -50,17 +41,19 @@ function toEdicao(projeto: ProjetoLista): ProjetoEdicao {
     nome: projeto.nome,
     qtdeMadeira: String(projeto.qtdeMadeira ?? 0),
     status: projeto.status,
+    dataInicio: toInputDate(projeto.dataInicio),
+    dataFim: toInputDate(projeto.dataFim),
     clienteId: projeto.cliente?.id ?? projeto.clienteId ?? '',
     clienteNome: '',
   };
 }
 
 export default function ProjetosCRUD() {
-  const userData = useCurrentUser();
   const [projetos, setProjetos] = useState<ProjetoLista[]>([]);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [projetoDetalhe, setProjetoDetalhe] = useState<ProjetoLista | null>(null);
   const [projetoEditando, setProjetoEditando] = useState<ProjetoEdicao | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -152,6 +145,8 @@ export default function ProjetosCRUD() {
       const res = await fetch(`/api/projetos/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setProjetos((atual) => atual.filter((projeto) => projeto.id !== id));
+        setProjetoDetalhe(null);
+        setProjetoEditando(null);
       } else {
         alert('Erro do servidor: o banco recusou a exclusão.');
       }
@@ -176,10 +171,16 @@ export default function ProjetosCRUD() {
           nome: projetoEditando.nome,
           qtdeMadeira: projetoEditando.qtdeMadeira,
           status: projetoEditando.status,
+          dataInicio: projetoEditando.dataInicio,
+          dataFim: projetoEditando.dataFim,
           clienteId:
-            projetoEditando.clienteId === '__new__' ? undefined : projetoEditando.clienteId,
+            projetoEditando.clienteId === '__new__'
+              ? undefined
+              : projetoEditando.clienteId,
           clienteNome:
-            projetoEditando.clienteId === '__new__' ? projetoEditando.clienteNome : undefined,
+            projetoEditando.clienteId === '__new__'
+              ? projetoEditando.clienteNome
+              : undefined,
         }),
       });
 
@@ -198,196 +199,212 @@ export default function ProjetosCRUD() {
   };
 
   return (
-    <div className="relative flex min-h-screen bg-slate-50 font-sans">
-      <aside className="hidden w-64 flex-col bg-slate-900 text-slate-300 md:flex">
-        <div className="flex items-center gap-3 border-b border-slate-800 p-6">
-          <Image
-            src="/logo.jpg"
-            alt="Logo"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
-          <span className="text-xl font-bold text-white">Easy-Log</span>
-        </div>
-
-        <nav className="flex-1 space-y-2 px-4 py-6">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
-          >
-            <LayoutDashboard className="h-5 w-5" /> Dashboard
-          </Link>
-          <Link
-            href="/projetos"
-            className="flex items-center gap-3 rounded-lg border-l-4 border-orange-600 bg-slate-800 px-4 py-3 text-white"
-          >
-            <FolderKanban className="h-5 w-5 text-orange-500" /> Projetos
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
-          >
-            <Package className="h-5 w-5" /> Estoque
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
-          >
-            <Users className="h-5 w-5" /> Clientes
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-slate-800"
-          >
-            <Truck className="h-5 w-5" /> Fornecedores
-          </Link>
-        </nav>
-
-        <div className="border-t border-slate-800 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-600 text-sm font-bold text-white">
-                {userData.iniciais}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm leading-tight font-medium text-white">
-                  {userData.nome}
-                </span>
-                <span className="text-xs text-slate-400">{userData.role}</span>
-              </div>
-            </div>
+    <AppShell
+      active="projetos"
+      header={
+        <PageHeader
+          title="Gerenciamento de Projetos"
+          subtitle="Liste, busque, crie, edite e exclua os projetos em andamento."
+          action={
             <Link
-              href="/login"
-              onClick={() => localStorage.removeItem('current_user')}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-500"
+              href="/projetos/novo"
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-base leading-6 font-medium text-white"
             >
-              <LogOut className="h-5 w-5" />
+              <Plus className="size-5" /> Novo Projeto
             </Link>
-          </div>
+          }
+        />
+      }
+    >
+      <div className="flex flex-col gap-6">
+        <div className="flex w-full max-w-[448px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
+          <Search className="size-5 shrink-0 text-[#94a3b8]" />
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
+            placeholder="Buscar por nome, código ou cliente..."
+          />
         </div>
-      </aside>
 
-      <main className="flex h-screen flex-1 flex-col overflow-hidden">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Gerenciamento de Projetos</h1>
-            <p className="text-sm text-slate-500">
-              Liste, busque, crie, edite e exclua os projetos em andamento.
-            </p>
-          </div>
-          <Link
-            href="/projetos/novo"
-            className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-orange-700"
-          >
-            <Plus className="h-5 w-5" /> Novo Projeto
-          </Link>
-        </header>
+        <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+          <table className="min-w-full">
+            <thead className="bg-[#f8fafc]">
+              <tr className="border-b border-[#e2e8f0]">
+                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                  Nome
+                </th>
+                <th className="w-[240px] px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                  Data
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                  Cliente
+                </th>
+                <th className="w-[200px] px-6 py-3 text-right text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {carregando ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-[#64748b]">
+                    Carregando projetos...
+                  </td>
+                </tr>
+              ) : projetosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-[#64748b]">
+                    {busca.trim()
+                      ? 'Nenhum projeto encontrado para esta busca.'
+                      : 'Nenhum projeto cadastrado.'}
+                  </td>
+                </tr>
+              ) : (
+                projetosFiltrados.map((projeto) => (
+                  <tr
+                    key={projeto.id}
+                    className="cursor-pointer border-b border-[#e2e8f0] last:border-b-0 hover:bg-slate-50"
+                    onClick={() => setProjetoDetalhe(projeto)}
+                  >
+                    <td className="px-6 py-4 text-sm font-medium text-[#0f172a]">
+                      {projeto.nome}
+                    </td>
+                    <td className="w-[240px] px-6 py-4 text-sm whitespace-nowrap text-[#64748b]">
+                      {formatarPeriodo(projeto.dataInicio, projeto.dataFim)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#334155]">
+                      {projeto.cliente?.nome ?? '—'}
+                    </td>
+                    <td className="w-[200px] px-6 py-4">
+                      <span
+                        className={`flex w-full items-center justify-center rounded-xl px-3 py-1 text-xs font-medium ${classesStatusTabela(projeto.status)}`}
+                      >
+                        {rotuloStatus(projeto.status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-        <div className="flex-1 overflow-auto p-8">
-          <div className="mb-6 flex">
-            <div className="relative w-full max-w-md">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Search className="h-5 w-5 text-slate-400" />
+      {projetoDetalhe && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
+          <div className="flex w-full max-w-[672px] flex-col overflow-hidden rounded-xl bg-white">
+            <div className="flex items-center justify-between px-6 py-4">
+              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
+                Detalhes do Projeto
+              </h2>
+              <button
+                type="button"
+                onClick={() => setProjetoDetalhe(null)}
+                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                aria-label="Fechar"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-5 p-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Código</p>
+                  <p className="text-sm text-[#0f172a]">{projetoDetalhe.codigo}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Status</p>
+                  <span
+                    className={`inline-flex w-fit rounded-lg px-2.5 py-1 text-sm font-medium ${classesStatusModal(projetoDetalhe.status)}`}
+                  >
+                    {rotuloStatus(projetoDetalhe.status)}
+                  </span>
+                </div>
               </div>
-              <input
-                type="search"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="block w-full rounded-lg border border-slate-300 py-2 pr-3 pl-10 text-sm outline-none focus:border-orange-600 focus:ring-orange-600"
-                placeholder="Buscar por nome, código ou cliente..."
-              />
+
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-bold text-[#1e293b]">Nome do Projeto</p>
+                <p className="text-sm text-[#0f172a]">{projetoDetalhe.nome}</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Cliente</p>
+                  <p className="text-sm text-[#0f172a]">
+                    {projetoDetalhe.cliente?.nome ?? '—'}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Qtd. de Madeira (m²)</p>
+                  <p className="text-sm text-[#0f172a]">
+                    {formatarMadeira(projetoDetalhe.qtdeMadeira)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Data início</p>
+                  <p className="text-sm text-[#0f172a]">
+                    {formatarData(projetoDetalhe.dataInicio)}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-[#1e293b]">Data fim</p>
+                  <p className="text-sm text-[#0f172a]">
+                    {formatarData(projetoDetalhe.dataFim)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+                <button
+                  type="button"
+                  onClick={() => void handleExcluir(projetoDetalhe.id)}
+                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base leading-6 font-bold text-white"
+                >
+                  <Trash2 className="size-4" /> Excluir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjetoEditando(toEdicao(projetoDetalhe));
+                    setProjetoDetalhe(null);
+                  }}
+                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base leading-6 font-bold text-white"
+                >
+                  <Pencil className="size-4" /> Editar
+                </button>
+              </div>
             </div>
           </div>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Nome
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Data e hora
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {carregando ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-slate-500">
-                      Carregando projetos...
-                    </td>
-                  </tr>
-                ) : projetosFiltrados.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-slate-500">
-                      {busca.trim()
-                        ? 'Nenhum projeto encontrado para esta busca.'
-                        : 'Nenhum projeto cadastrado.'}
-                    </td>
-                  </tr>
-                ) : (
-                  projetosFiltrados.map((projeto) => (
-                    <tr key={projeto.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                        {projeto.nome}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap text-slate-500">
-                        {formatarDataHora(projeto.criadoEm)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-700">
-                        {projeto.cliente?.nome ?? '—'}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setProjetoEditando(toEdicao(projeto))}
-                          className="mr-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-orange-600 transition-colors hover:bg-orange-50"
-                        >
-                          <Pencil className="h-4 w-4" /> Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleExcluir(projeto.id)}
-                          className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-red-600 transition-colors hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" /> Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
-      </main>
+      )}
 
       {projetoEditando && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-800">Editar Projeto</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
+          <div className="flex w-full max-w-2xl flex-col rounded-xl bg-white">
+            <div className="flex items-center justify-between px-6 py-4">
+              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
+                Editar Projeto
+              </h2>
               <button
                 type="button"
                 onClick={() => setProjetoEditando(null)}
-                className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                aria-label="Fechar"
               >
-                <X className="h-5 w-5" />
+                <X className="size-5" />
               </button>
             </div>
 
             <form onSubmit={handleSalvarEdicao} className="space-y-5 p-6">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
                     Código
                   </label>
                   <input
@@ -400,11 +417,11 @@ export default function ProjetosCRUD() {
                         codigo: e.target.value.toUpperCase(),
                       })
                     }
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
                     Status
                   </label>
                   <select
@@ -415,15 +432,28 @@ export default function ProjetosCRUD() {
                         status: e.target.value as StatusProjeto,
                       })
                     }
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
                   >
                     <option value="ABERTO">Aberto</option>
                     <option value="EM_ANDAMENTO">Em Andamento</option>
                     <option value="CONCLUIDO">Concluído</option>
+                    <option value="ATRASADO">Atrasado</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                  <PeriodoField
+                    dataInicio={projetoEditando.dataInicio}
+                    dataFim={projetoEditando.dataFim}
+                    onDataInicioChange={(dataInicio) =>
+                      setProjetoEditando({ ...projetoEditando, dataInicio })
+                    }
+                    onDataFimChange={(dataFim) =>
+                      setProjetoEditando({ ...projetoEditando, dataFim })
+                    }
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
                     Nome do Projeto
                   </label>
                   <input
@@ -433,7 +463,7 @@ export default function ProjetosCRUD() {
                     onChange={(e) =>
                       setProjetoEditando({ ...projetoEditando, nome: e.target.value })
                     }
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -442,7 +472,11 @@ export default function ProjetosCRUD() {
                     clienteId={projetoEditando.clienteId}
                     clienteNome={projetoEditando.clienteNome}
                     onClienteIdChange={(clienteId) =>
-                      setProjetoEditando({ ...projetoEditando, clienteId, clienteNome: '' })
+                      setProjetoEditando({
+                        ...projetoEditando,
+                        clienteId,
+                        clienteNome: '',
+                      })
                     }
                     onClienteNomeChange={(clienteNome) =>
                       setProjetoEditando({ ...projetoEditando, clienteNome })
@@ -450,7 +484,7 @@ export default function ProjetosCRUD() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-slate-800">
+                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
                     Qtd. de Madeira (m²)
                   </label>
                   <input
@@ -464,31 +498,32 @@ export default function ProjetosCRUD() {
                         qtdeMadeira: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
                   />
                 </div>
               </div>
 
-              <div className="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
                 <button
                   type="button"
                   onClick={() => setProjetoEditando(null)}
-                  className="rounded-lg px-5 py-2.5 font-bold text-slate-600 transition-colors hover:bg-slate-100"
+                  className="rounded-lg px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="flex items-center gap-2 rounded-lg bg-orange-600 px-5 py-2.5 font-bold text-white transition-colors hover:bg-orange-700 disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 font-bold text-white disabled:opacity-60"
                 >
-                  <Save className="h-4 w-4" /> {salvando ? 'Salvando...' : 'Salvar Alterações'}
+                  <Save className="size-4" />{' '}
+                  {salvando ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

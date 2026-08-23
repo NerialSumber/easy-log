@@ -38,6 +38,8 @@ model Projeto {
   cliente      Cliente?      @relation(fields: [clienteId], references: [id])
   clienteId    String?
   funcionarios Funcionario[]
+  dataInicio   DateTime?
+  dataFim      DateTime?
   criadoEm     DateTime      @default(now())
 }
 
@@ -45,6 +47,7 @@ enum StatusProjeto {
   ABERTO
   EM_ANDAMENTO
   CONCLUIDO
+  ATRASADO
 }
 
 model Cliente {

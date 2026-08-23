@@ -1,4 +1,4 @@
-export type StatusProjeto = 'ABERTO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+export type StatusProjeto = 'ABERTO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
 
 export type ClienteResumo = {
   id: string;
@@ -12,6 +12,8 @@ export type ProjetoLista = {
   qtdeMadeira: number;
   status: StatusProjeto;
   criadoEm: string;
+  dataInicio: string | null;
+  dataFim: string | null;
   clienteId: string | null;
   cliente: ClienteResumo | null;
 };

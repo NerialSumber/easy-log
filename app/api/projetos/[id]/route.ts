@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { prismaErrorMessage, projetoInclude, resolveClienteId } from '@/lib/projetos';
+import {
+  parsePeriodoProjeto,
+  parseStatusProjeto,
+  prismaErrorMessage,
+  projetoInclude,
+  resolveClienteId,
+} from '@/lib/projetos';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +39,26 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { codigo, nome, qtdeMadeira, status, clienteId, clienteNome } = body;
+    const {
+      codigo,
+      nome,
+      qtdeMadeira,
+      status,
+      clienteId,
+      clienteNome,
+      dataInicio,
+      dataFim,
+    } = body;
+
+    const periodo = parsePeriodoProjeto(dataInicio, dataFim);
+    if (!periodo.ok) {
+      return NextResponse.json({ error: periodo.error }, { status: 400 });
+    }
+
+    const statusValido = parseStatusProjeto(status);
+    if (!statusValido) {
+      return NextResponse.json({ error: 'Status inválido.' }, { status: 400 });
+    }
 
     const resolvedClienteId = await resolveClienteId(clienteId, clienteNome);
 
@@ -43,7 +68,9 @@ export async function PUT(
         codigo,
         nome,
         qtdeMadeira: qtdeMadeira ? parseFloat(qtdeMadeira.toString()) : 0,
-        status,
+        status: statusValido,
+        dataInicio: periodo.dataInicio,
+        dataFim: periodo.dataFim,
         ...(resolvedClienteId ? { clienteId: resolvedClienteId } : {}),
       },
       include: projetoInclude,
