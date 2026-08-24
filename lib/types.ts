@@ -5,6 +5,12 @@ export type ClienteResumo = {
   nome: string;
 };
 
+export type FornecedorLista = {
+  id: string;
+  nome: string;
+  contato: string | null;
+};
+
 export type ProjetoLista = {
   id: string;
   codigo: string;
