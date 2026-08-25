@@ -1,0 +1,1 @@
+ALTER TABLE "Fornecedor" RENAME COLUMN "contato" TO "produto";

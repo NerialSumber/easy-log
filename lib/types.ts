@@ -8,7 +8,10 @@ export type ClienteResumo = {
 export type FornecedorLista = {
   id: string;
   nome: string;
-  contato: string | null;
+  telefone: string | null;
+  email: string | null;
+  endereco: string | null;
+  produto: string[];
 };
 
 export type ProjetoLista = {
