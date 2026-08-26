@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { UserSettings } from '@/components/user-settings';
 
 type PageHeaderProps = {
   title: string;
@@ -13,7 +14,10 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
         <h1 className="text-2xl leading-8 font-bold text-[#1e293b]">{title}</h1>
         {subtitle ? <p className="text-sm leading-5 text-[#64748b]">{subtitle}</p> : null}
       </div>
-      {action}
+      <div className="flex items-center gap-3">
+        {action}
+        <UserSettings />
+      </div>
     </header>
   );
 }
