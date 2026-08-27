@@ -4,12 +4,23 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 export type UserData = {
   nome: string;
+  email: string;
   role: string;
   iniciais: string;
 };
 
+type StoredUser = {
+  nome?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+};
+
+const USER_CHANGED_EVENT = 'current-user-changed';
+
 const GUEST: UserData = {
   nome: 'Carregando...',
+  email: '',
   role: 'Aguarde',
   iniciais: '--',
 };
@@ -24,7 +35,11 @@ function subscribe(onStoreChange: () => void) {
   };
 
   window.addEventListener('storage', onChange);
-  return () => window.removeEventListener('storage', onChange);
+  window.addEventListener(USER_CHANGED_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(USER_CHANGED_EVENT, onChange);
+  };
 }
 
 function iniciaisDe(nome: string) {
@@ -36,6 +51,20 @@ function iniciaisDe(nome: string) {
     return partes[0].substring(0, 2).toUpperCase();
   }
   return partes[0].toUpperCase();
+}
+
+function readStoredUser(): StoredUser | null {
+  const stored = localStorage.getItem('current_user');
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as StoredUser;
+  } catch {
+    return null;
+  }
+}
+
+function notifyUserChange() {
+  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
 
 function readUser(): UserData {
@@ -51,10 +80,11 @@ function readUser(): UserData {
   }
 
   try {
-    const parsed = JSON.parse(stored) as { nome?: string; role?: string };
+    const parsed = JSON.parse(stored) as StoredUser;
     const nome = parsed.nome || 'Usuário';
     cachedUser = {
       nome,
+      email: parsed.email || '',
       role: parsed.role || 'Administrador',
       iniciais: iniciaisDe(nome),
     };
@@ -63,6 +93,28 @@ function readUser(): UserData {
   }
 
   return cachedUser;
+}
+
+export function senhaAtualConfere(senha: string) {
+  const atual = readStoredUser();
+  return Boolean(atual?.password && atual.password === senha);
+}
+
+export function persistirDadosUsuario(updates: { nome?: string; email?: string; password?: string }) {
+  const atual = readStoredUser();
+  if (!atual) return;
+
+  const atualizado = { ...atual, ...updates };
+  localStorage.setItem('current_user', JSON.stringify(atualizado));
+
+  const users = JSON.parse(localStorage.getItem('fake_users') || '[]') as StoredUser[];
+  const index = users.findIndex((user) => user.email === atual.email);
+  if (index >= 0) {
+    users[index] = { ...users[index], ...updates };
+    localStorage.setItem('fake_users', JSON.stringify(users));
+  }
+
+  notifyUserChange();
 }
 
 export function useCurrentUser() {

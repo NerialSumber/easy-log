@@ -8,6 +8,7 @@ import {
   Truck,
   type LucideIcon,
 } from 'lucide-react';
+import { UserSettings } from '@/components/user-settings';
 import { useCurrentUser } from '@/lib/current-user';
 
 export type NavKey = 'dashboard' | 'projetos' | 'estoque' | 'fornecedores';
@@ -28,12 +29,13 @@ export function AppSidebar({ active }: { active: NavKey }) {
         <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ea580c] text-xl font-bold text-white">
           {userData.iniciais}
         </div>
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm leading-[18px] font-medium text-slate-800">
             {userData.nome}
           </span>
           <span className="text-xs leading-4 text-[#94a3b8]">{userData.role}</span>
         </div>
+        <UserSettings />
       </div>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-7">
