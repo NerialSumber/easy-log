@@ -16,7 +16,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
       </div>
       <div className="flex items-center gap-3">
         {action}
-        <UserSettings />
+        <UserSettings className="md:hidden" />
       </div>
     </header>
   );

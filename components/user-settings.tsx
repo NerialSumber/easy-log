@@ -1,23 +1,43 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Accessibility, Eye, EyeOff, LogOut, Settings, UserRound, X } from 'lucide-react';
-import { useCurrentUser } from '@/lib/current-user';
+import { createPortal } from 'react-dom';
+import { Accessibility, Eye, EyeOff, KeyRound, LogOut, Pencil, Settings, UserRound, X } from 'lucide-react';
+import { persistirDadosUsuario, senhaAtualConfere, useCurrentUser } from '@/lib/current-user';
 
-export function UserSettings() {
+type ModoUsuario = 'visualizar' | 'editar' | 'senha';
+
+const campoEditavel =
+  'h-11 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#1e293b] transition outline-none placeholder:text-[#94a3b8] focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/15';
+
+function DadoUsuario({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-semibold text-[#334155]">{label}</p>
+      <p className="text-base text-[#1e293b]">{valor || '—'}</p>
+    </div>
+  );
+}
+
+export function UserSettings({ className = '' }: { className?: string }) {
   const user = useCurrentUser();
   const [isOpen, setIsOpen] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<'usuario' | 'acessibilidade'>('usuario');
+  const [modoUsuario, setModoUsuario] = useState<ModoUsuario>('visualizar');
   const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senhaAtual, setSenhaAtual] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [erro, setErro] = useState('');
   const [temaNoturno, setTemaNoturno] = useState(false);
   const [fonteMaior, setFonteMaior] = useState(false);
 
   function aplicarPreferencias(novoTemaNoturno: boolean, novaFonteMaior: boolean) {
     document.body.classList.toggle('dark-theme', novoTemaNoturno);
-    document.body.classList.toggle('large-font', novaFonteMaior);
+    document.body.classList.remove('large-font');
+    document.documentElement.classList.toggle('large-font', novaFonteMaior);
   }
 
   useEffect(() => {
@@ -26,11 +46,19 @@ export function UserSettings() {
     aplicarPreferencias(temaSalvo, fonteSalva);
   }, []);
 
-  function abrirConfiguracoes() {
+  function carregarDadosUsuario() {
     setNome(user.nome === 'Carregando...' ? '' : user.nome);
+    setEmail(user.email);
+  }
+
+  function abrirConfiguracoes() {
+    carregarDadosUsuario();
+    setSenhaAtual('');
     setSenha('');
     setConfirmacao('');
     setMostrarSenha(false);
+    setErro('');
+    setModoUsuario('visualizar');
     setAbaAtiva('usuario');
     setTemaNoturno(localStorage.getItem('tema_noturno') === 'true');
     setFonteMaior(localStorage.getItem('fonte_maior') === 'true');
@@ -39,11 +67,81 @@ export function UserSettings() {
 
   function fecharConfiguracoes() {
     setIsOpen(false);
+    setModoUsuario('visualizar');
+    setErro('');
   }
 
-  function salvarAlteracoes(event: React.FormEvent<HTMLFormElement>) {
+  function cancelarEdicao() {
+    carregarDadosUsuario();
+    setSenhaAtual('');
+    setSenha('');
+    setConfirmacao('');
+    setMostrarSenha(false);
+    setErro('');
+    setModoUsuario('visualizar');
+  }
+
+  function salvarDados(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsOpen(false);
+    event.stopPropagation();
+    const nomeLimpo = nome.trim();
+    const emailLimpo = email.trim();
+    if (!nomeLimpo) {
+      setErro('Informe o nome de usuário.');
+      return;
+    }
+    if (!emailLimpo) {
+      setErro('Informe o e-mail.');
+      return;
+    }
+
+    persistirDadosUsuario({ nome: nomeLimpo, email: emailLimpo });
+    setNome(nomeLimpo);
+    setEmail(emailLimpo);
+    setErro('');
+    setModoUsuario('visualizar');
+  }
+
+  function iniciarEdicao(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setErro('');
+    setModoUsuario('editar');
+  }
+
+  function iniciarAlteracaoSenha(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setErro('');
+    setModoUsuario('senha');
+  }
+
+  function salvarSenha(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!senhaAtual) {
+      setErro('Informe a senha atual.');
+      return;
+    }
+    if (!senhaAtualConfere(senhaAtual)) {
+      setErro('A senha atual está incorreta.');
+      return;
+    }
+    if (senha.length < 4) {
+      setErro('A nova senha deve ter pelo menos 4 caracteres.');
+      return;
+    }
+    if (senha !== confirmacao) {
+      setErro('A confirmação não confere com a nova senha.');
+      return;
+    }
+
+    persistirDadosUsuario({ password: senha });
+    setSenhaAtual('');
+    setSenha('');
+    setConfirmacao('');
+    setMostrarSenha(false);
+    setErro('');
+    setModoUsuario('visualizar');
   }
 
   function alternarTemaNoturno() {
@@ -65,6 +163,9 @@ export function UserSettings() {
     window.location.href = '/login';
   }
 
+  const editando = modoUsuario === 'editar';
+  const alterandoSenha = modoUsuario === 'senha';
+
   return (
     <>
       <button
@@ -72,13 +173,14 @@ export function UserSettings() {
         onClick={abrirConfiguracoes}
         aria-label="Abrir configurações do usuário"
         title="Configurações"
-        className="flex size-10 items-center justify-center rounded-lg border border-[#e2e8f0] text-[#475569] transition hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:text-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
+        className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[#475569] transition hover:bg-[#f1f5f9] hover:text-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none ${className}`}
       >
-        <Settings size={19} strokeWidth={2} />
+        <Settings size={24} strokeWidth={2} />
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/40 px-4 py-6">
+      {isOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/40 px-4 py-6">
           <section
             role="dialog"
             aria-modal="true"
@@ -94,7 +196,11 @@ export function UserSettings() {
                   Configurações do usuário
                 </h2>
                 <p className="mt-1 text-sm text-[#64748b]">
-                  Atualize seus dados de acesso.
+                  {alterandoSenha
+                    ? 'Defina uma nova senha de acesso.'
+                    : editando
+                      ? 'Atualize seus dados de acesso.'
+                      : 'Seus dados atuais estão bloqueados para edição.'}
                 </p>
               </div>
               <button
@@ -111,7 +217,10 @@ export function UserSettings() {
             <div className="mb-6 flex border-b border-[#e2e8f0]">
               <button
                 type="button"
-                onClick={() => setAbaAtiva('usuario')}
+                onClick={() => {
+                  setAbaAtiva('usuario');
+                  setErro('');
+                }}
                 className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'usuario' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-[#64748b] hover:text-[#334155]'}`}
               >
                 <UserRound size={17} />
@@ -119,7 +228,10 @@ export function UserSettings() {
               </button>
               <button
                 type="button"
-                onClick={() => setAbaAtiva('acessibilidade')}
+                onClick={() => {
+                  setAbaAtiva('acessibilidade');
+                  setErro('');
+                }}
                 className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'acessibilidade' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-[#64748b] hover:text-[#334155]'}`}
               >
                 <Accessibility size={17} />
@@ -128,71 +240,158 @@ export function UserSettings() {
             </div>
 
             {abaAtiva === 'usuario' ? (
-              <form onSubmit={salvarAlteracoes} className="space-y-5">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Nome de usuário
-                  </span>
-                  <input
-                    type="text"
-                    value={nome}
-                    onChange={(event) => setNome(event.target.value)}
-                    placeholder="Digite seu nome"
-                    required
-                    className="h-11 w-full rounded-lg border border-[#cbd5e1] px-3 text-sm text-[#1e293b] transition outline-none placeholder:text-[#94a3b8] focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/15"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Nova senha
-                  </span>
-                  <div className="relative">
+              alterandoSenha ? (
+                <form onSubmit={salvarSenha} className="space-y-5">
+                  {erro ? (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {erro}
+                    </p>
+                  ) : null}
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
+                      Senha atual
+                    </span>
                     <input
                       type={mostrarSenha ? 'text' : 'password'}
-                      value={senha}
-                      onChange={(event) => setSenha(event.target.value)}
-                      placeholder="Digite uma nova senha"
-                      className="h-11 w-full rounded-lg border border-[#cbd5e1] px-3 pr-11 text-sm text-[#1e293b] transition outline-none placeholder:text-[#94a3b8] focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/15"
+                      value={senhaAtual}
+                      onChange={(event) => setSenhaAtual(event.target.value)}
+                      placeholder="Digite a senha atual"
+                      required
+                      className={campoEditavel}
                     />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
+                      Nova senha
+                    </span>
+                    <div className="relative">
+                      <input
+                        type={mostrarSenha ? 'text' : 'password'}
+                        value={senha}
+                        onChange={(event) => setSenha(event.target.value)}
+                        placeholder="Digite a nova senha"
+                        required
+                        className={`${campoEditavel} pr-11`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMostrarSenha((atual) => !atual)}
+                        aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                        title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748b] hover:text-[#0f766e]"
+                      >
+                        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
+                      Confirmar nova senha
+                    </span>
+                    <input
+                      type={mostrarSenha ? 'text' : 'password'}
+                      value={confirmacao}
+                      onChange={(event) => setConfirmacao(event.target.value)}
+                      placeholder="Repita a nova senha"
+                      required
+                      className={campoEditavel}
+                    />
+                  </label>
+                  <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
                     <button
                       type="button"
-                      onClick={() => setMostrarSenha((atual) => !atual)}
-                      aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                      title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748b] hover:text-[#0f766e]"
+                      onClick={cancelarEdicao}
+                      className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
                     >
-                      {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
+                    >
+                      Salvar senha
                     </button>
                   </div>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Confirmar nova senha
-                  </span>
-                  <input
-                    type={mostrarSenha ? 'text' : 'password'}
-                    value={confirmacao}
-                    onChange={(event) => setConfirmacao(event.target.value)}
-                    placeholder="Repita a nova senha"
-                    className="h-11 w-full rounded-lg border border-[#cbd5e1] px-3 text-sm text-[#1e293b] transition outline-none placeholder:text-[#94a3b8] focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/15"
-                  />
-                </label>
-                <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
-                  <button
-                    type="button"
-                    onClick={fecharConfiguracoes}
-                    className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
-                  >
-                    Salvar alterações
-                  </button>
+                </form>
+              ) : editando ? (
+                <form
+                  onSubmit={salvarDados}
+                  className="space-y-5"
+                >
+                  {erro ? (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      {erro}
+                    </p>
+                  ) : null}
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
+                      Nome de usuário
+                    </span>
+                    <input
+                      type="text"
+                      value={nome}
+                      onChange={(event) => setNome(event.target.value)}
+                      placeholder="Digite seu nome"
+                      required
+                      autoFocus
+                      className={campoEditavel}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
+                      E-mail
+                    </span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="Digite seu e-mail"
+                      required
+                      className={campoEditavel}
+                    />
+                  </label>
+                  <DadoUsuario label="Função" valor={user.role} />
+                  <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
+                    <button
+                      type="button"
+                      onClick={cancelarEdicao}
+                      className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
+                    >
+                      Salvar alterações
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-5">
+                  <DadoUsuario label="Nome de usuário" valor={nome} />
+                  <DadoUsuario label="E-mail" valor={email} />
+                  <DadoUsuario label="Função" valor={user.role} />
+                  <div className="flex flex-wrap justify-end gap-3 border-t border-[#e2e8f0] pt-5">
+                    <button
+                      type="button"
+                      onClick={iniciarAlteracaoSenha}
+                      className="flex items-center gap-2 rounded-lg border border-[#cbd5e1] px-4 py-2.5 text-sm font-semibold text-[#334155] transition hover:bg-[#f8fafc]"
+                    >
+                      <KeyRound size={16} />
+                      Alterar senha
+                    </button>
+                    <button
+                      type="button"
+                      onClick={iniciarEdicao}
+                      className="flex items-center gap-2 rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
+                    >
+                      <Pencil size={16} />
+                      Editar
+                    </button>
+                  </div>
                 </div>
-              </form>
+              )
             ) : (
               <div className="space-y-4">
                 <button
@@ -226,7 +425,7 @@ export function UserSettings() {
                       Aumentar tamanho da fonte
                     </span>
                     <span className="mt-1 block text-xs text-[#64748b]">
-                      Facilitar a leitura dos textos
+                      Deixar todas as letras do site maiores
                     </span>
                   </span>
                   <span
@@ -260,8 +459,10 @@ export function UserSettings() {
               </button>
             </div>
           </section>
-        </div>
-      ) : null}
+        </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

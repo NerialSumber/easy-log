@@ -42,6 +42,6 @@ body.dark-theme select {
   color: #e2e8f0;
 }
 
-body.large-font {
-  font-size: 112.5%;
+html.large-font {
+  font-size: 137.5%;
 }
