@@ -16,7 +16,7 @@ const NAV_ITEMS: { key: NavKey; href: string; label: string; icon: LucideIcon }[
   { key: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'projetos', href: '/projetos', label: 'Projetos', icon: FolderKanban },
   { key: 'estoque', href: '#', label: 'Estoque', icon: Package },
-  { key: 'fornecedores', href: '#', label: 'Fornecedores', icon: Truck },
+  { key: 'fornecedores', href: '/fornecedores', label: 'Fornecedores', icon: Truck },
 ];
 
 export function AppSidebar({ active }: { active: NavKey }) {

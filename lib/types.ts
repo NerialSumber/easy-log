@@ -5,6 +5,15 @@ export type ClienteResumo = {
   nome: string;
 };
 
+export type FornecedorLista = {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+  endereco: string | null;
+  produto: string[];
+};
+
 export type ProjetoLista = {
   id: string;
   codigo: string;

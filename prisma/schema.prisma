@@ -59,9 +59,12 @@ model Cliente {
 }
 
 model Fornecedor {
-  id      String  @id @default(cuid())
-  nome    String
-  contato String?
+  id        String   @id @default(cuid())
+  nome      String
+  telefone  String?
+  email     String?
+  endereco  String?
+  produto   String[] @default([])
 }
 
 model ItemEstoque {
