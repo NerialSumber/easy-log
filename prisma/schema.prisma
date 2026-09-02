@@ -70,8 +70,15 @@ model Fornecedor {
 model ItemEstoque {
   id         String @id @default(cuid())
   nome       String
-  quantidade Int    @default(0)
+  quantidade Float  @default(0)
   unidade    String
+  categoria  CategoriaEstoque @default(MADEIRA)
+}
+
+enum CategoriaEstoque {
+  MADEIRA
+  QUIMICO
+  EPI
 }
 
 model Maquina {
