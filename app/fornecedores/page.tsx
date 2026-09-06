@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { Filter, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { PageHeader } from '@/components/page-header';
+import { useCurrentUser } from '@/lib/current-user';
 import { formatarTelefone, validarContato } from '@/lib/contato';
+import { pode } from '@/lib/permissoes';
 import type { FornecedorLista } from '@/lib/types';
 
 type FornecedorEdicao = {
@@ -35,6 +37,8 @@ function filtrarFornecedores(fornecedores: FornecedorLista[], busca: string) {
 }
 
 export default function FornecedoresCRUD() {
+  const user = useCurrentUser();
+  const podeEditar = pode(user.role, 'fornecedores', 'escrever');
   const [fornecedores, setFornecedores] = useState<FornecedorLista[]>([]);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -133,14 +137,20 @@ export default function FornecedoresCRUD() {
       header={
         <PageHeader
           title="Gerenciamento de Fornecedores"
-          subtitle="Cadastre os fornecedores e os produtos que eles fornecem."
+          subtitle={
+            podeEditar
+              ? 'Cadastre os fornecedores e os produtos que eles fornecem.'
+              : 'Consulte os fornecedores e os produtos que eles fornecem.'
+          }
           action={
-            <Link
-              href="/fornecedores/novo"
-              className="flex items-center justify-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-base leading-6 font-medium text-white"
-            >
-              <Plus className="size-5" /> Novo Fornecedor
-            </Link>
+            podeEditar ? (
+              <Link
+                href="/fornecedores/novo"
+                className="flex items-center justify-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-base leading-6 font-medium text-white"
+              >
+                <Plus className="size-5" /> Novo Fornecedor
+              </Link>
+            ) : undefined
           }
         />
       }
@@ -274,33 +284,35 @@ export default function FornecedoresCRUD() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
-                <button
-                  type="button"
-                  onClick={() => void handleExcluir(detalhe.id)}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
-                >
-                  <Trash2 className="size-4" /> Excluir
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditando({
-                      id: detalhe.id,
-                      nome: detalhe.nome,
-                      telefone: detalhe.telefone ?? '',
-                      email: detalhe.email ?? '',
-                      endereco: detalhe.endereco ?? '',
-                      produto: detalhe.produto,
-                    });
-                    setNovoProduto('');
-                    setDetalhe(null);
-                  }}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
-                >
-                  <Pencil className="size-4" /> Editar
-                </button>
-              </div>
+              {podeEditar ? (
+                <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => void handleExcluir(detalhe.id)}
+                    className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
+                  >
+                    <Trash2 className="size-4" /> Excluir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditando({
+                        id: detalhe.id,
+                        nome: detalhe.nome,
+                        telefone: detalhe.telefone ?? '',
+                        email: detalhe.email ?? '',
+                        endereco: detalhe.endereco ?? '',
+                        produto: detalhe.produto,
+                      });
+                      setNovoProduto('');
+                      setDetalhe(null);
+                    }}
+                    className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
+                  >
+                    <Pencil className="size-4" /> Editar
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

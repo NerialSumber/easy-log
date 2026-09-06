@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Edit3, Minus, Package, Plus, Search, Trash2, X } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { PageHeader } from '@/components/page-header';
+import { useExigirPermissao } from '@/lib/current-user';
 
 type Categoria = 'MADEIRA' | 'QUIMICO' | 'EPI';
 type Operacao = 'entrada' | 'saida';
@@ -42,6 +43,7 @@ function quantidadePrevista(item: ItemEstoque, operacao: Operacao, quantidade: n
 }
 
 export default function EstoquePage() {
+  const { permitido } = useExigirPermissao('estoque');
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [aba, setAba] = useState<Categoria>('MADEIRA');
   const [busca, setBusca] = useState('');
@@ -56,6 +58,7 @@ export default function EstoquePage() {
   const [movimentando, setMovimentando] = useState(false);
 
   useEffect(() => {
+    if (!permitido) return;
     fetch('/api/estoque', { cache: 'no-store' })
       .then(async (res) => {
         const data: unknown = await res.json();
@@ -63,7 +66,7 @@ export default function EstoquePage() {
       })
       .catch(() => setItens([]))
       .finally(() => setCarregando(false));
-  }, []);
+  }, [permitido]);
 
   const itensVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatarTelefone, validarContato } from '@/lib/contato';
 
@@ -6,6 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const acesso = await exigirPermissao('fornecedores');
+    if (!acesso.ok) return acesso.resposta;
     const fornecedores = await prisma.fornecedor.findMany({ orderBy: { nome: 'asc' } });
     return NextResponse.json(fornecedores);
   } catch (error) {
@@ -16,6 +19,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const acesso = await exigirPermissao('fornecedores', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const body = (await request.json()) as {
       nome?: unknown;
       telefone?: unknown;

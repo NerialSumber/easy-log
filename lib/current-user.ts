@@ -1,16 +1,21 @@
 'use client';
 
 import { useEffect, useSyncExternalStore } from 'react';
+import { normalizarRole, pode, rotuloRole, type Acao, type Area, type Role } from '@/lib/permissoes';
 
 export type UserData = {
+  id: string;
   nome: string;
-  role: string;
+  role: Role | '';
+  roleLabel: string;
   iniciais: string;
 };
 
 const GUEST: UserData = {
+  id: '',
   nome: 'Carregando...',
-  role: 'Aguarde',
+  role: '',
+  roleLabel: 'Aguarde',
   iniciais: '--',
 };
 
@@ -24,7 +29,11 @@ function subscribe(onStoreChange: () => void) {
   };
 
   window.addEventListener('storage', onChange);
-  return () => window.removeEventListener('storage', onChange);
+  window.addEventListener('easylog-user', onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener('easylog-user', onChange);
+  };
 }
 
 function iniciaisDe(nome: string) {
@@ -51,11 +60,14 @@ function readUser(): UserData {
   }
 
   try {
-    const parsed = JSON.parse(stored) as { nome?: string; role?: string };
+    const parsed = JSON.parse(stored) as { id?: string; nome?: string; role?: string; roleLabel?: string };
     const nome = parsed.nome || 'Usuário';
+    const role = normalizarRole(parsed.role);
     cachedUser = {
+      id: parsed.id || '',
       nome,
-      role: parsed.role || 'Administrador',
+      role,
+      roleLabel: parsed.roleLabel || (role ? rotuloRole(role) : 'Usuário'),
       iniciais: iniciaisDe(nome),
     };
   } catch {
@@ -69,10 +81,43 @@ export function useCurrentUser() {
   const user = useSyncExternalStore(subscribe, readUser, () => GUEST);
 
   useEffect(() => {
-    if (!localStorage.getItem('current_user')) {
-      window.location.href = '/login';
-    }
+    let cancelado = false;
+
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then(async (res) => {
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error('unauth');
+        return data as { nome?: string; role?: string; roleLabel?: string };
+      })
+      .then((data) => {
+        if (cancelado) return;
+        localStorage.setItem('current_user', JSON.stringify(data));
+        window.dispatchEvent(new Event('easylog-user'));
+      })
+      .catch(() => {
+        if (cancelado) return;
+        localStorage.removeItem('current_user');
+        window.location.href = '/login';
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   return user;
+}
+
+export function useExigirPermissao(area: Area, acao: Acao = 'ver') {
+  const user = useCurrentUser();
+  const pronto = user.role === 'ADMIN' || user.role === 'PROJETISTA';
+  const permitido = pode(user.role, area, acao);
+
+  useEffect(() => {
+    if (pronto && !permitido) {
+      window.location.replace('/');
+    }
+  }, [pronto, permitido]);
+
+  return { user, permitido, pronto };
 }

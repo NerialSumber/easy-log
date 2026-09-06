@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   parsePeriodoProjeto,
@@ -15,6 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const acesso = await exigirPermissao('projetos');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     const projeto = await prisma.projeto.findUnique({
       where: { id },
@@ -37,6 +40,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const acesso = await exigirPermissao('projetos', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     const body = await request.json();
     const {
@@ -91,6 +96,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const acesso = await exigirPermissao('projetos', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
 
     await prisma.projeto.delete({

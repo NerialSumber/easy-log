@@ -6,17 +6,20 @@ import {
   LayoutDashboard,
   Package,
   Truck,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useCurrentUser } from '@/lib/current-user';
+import { pode } from '@/lib/permissoes';
 
-export type NavKey = 'dashboard' | 'projetos' | 'estoque' | 'fornecedores';
+export type NavKey = 'dashboard' | 'projetos' | 'estoque' | 'fornecedores' | 'usuarios';
 
 const NAV_ITEMS: { key: NavKey; href: string; label: string; icon: LucideIcon }[] = [
   { key: 'dashboard', href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'projetos', href: '/projetos', label: 'Projetos', icon: FolderKanban },
   { key: 'estoque', href: '/estoque', label: 'Estoque', icon: Package },
   { key: 'fornecedores', href: '/fornecedores', label: 'Fornecedores', icon: Truck },
+  { key: 'usuarios', href: '/usuarios', label: 'Usuários', icon: Users },
 ];
 
 export function AppSidebar({ active }: { active: NavKey }) {
@@ -32,12 +35,12 @@ export function AppSidebar({ active }: { active: NavKey }) {
           <span className="truncate text-sm leading-[18px] font-medium text-slate-800">
             {userData.nome}
           </span>
-          <span className="text-xs leading-4 text-[#94a3b8]">{userData.role}</span>
+          <span className="text-xs leading-4 text-[#94a3b8]">{userData.roleLabel}</span>
         </div>
       </div>
 
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-7">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => pode(userData.role, item.key)).map((item) => {
           const Icon = item.icon;
           const isActive = item.key === active;
 

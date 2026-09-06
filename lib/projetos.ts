@@ -9,22 +9,6 @@ export const projetoInclude = {
   },
 } as const;
 
-export async function ensureUsuarioPadrao() {
-  const existente = await prisma.usuario.findFirst();
-  if (existente) {
-    return existente;
-  }
-
-  return prisma.usuario.create({
-    data: {
-      nome: 'Administrador',
-      email: 'admin@easylog.com',
-      senha: 'senha_falsa',
-      role: 'ADMIN',
-    },
-  });
-}
-
 export async function resolveClienteId(
   clienteId?: unknown,
   clienteNome?: unknown,

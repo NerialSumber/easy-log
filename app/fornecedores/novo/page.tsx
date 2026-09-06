@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { Save } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { PageHeader } from '@/components/page-header';
+import { useExigirPermissao } from '@/lib/current-user';
 import { formatarTelefone, validarContato } from '@/lib/contato';
 
 export default function NovoFornecedor() {
+  useExigirPermissao('fornecedores', 'escrever');
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
