@@ -11,6 +11,15 @@ export type UserData = {
   iniciais: string;
 };
 
+type StoredUser = {
+  nome?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+};
+
+const USER_CHANGED_EVENT = 'current-user-changed';
+
 const GUEST: UserData = {
   id: '',
   nome: 'Carregando...',
@@ -47,6 +56,20 @@ function iniciaisDe(nome: string) {
   return partes[0].toUpperCase();
 }
 
+function readStoredUser(): StoredUser | null {
+  const stored = localStorage.getItem('current_user');
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as StoredUser;
+  } catch {
+    return null;
+  }
+}
+
+function notifyUserChange() {
+  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
+}
+
 function readUser(): UserData {
   const stored = localStorage.getItem('current_user');
   if (stored === cachedRaw) {
@@ -75,6 +98,28 @@ function readUser(): UserData {
   }
 
   return cachedUser;
+}
+
+export function senhaAtualConfere(senha: string) {
+  const atual = readStoredUser();
+  return Boolean(atual?.password && atual.password === senha);
+}
+
+export function persistirDadosUsuario(updates: { nome?: string; email?: string; password?: string }) {
+  const atual = readStoredUser();
+  if (!atual) return;
+
+  const atualizado = { ...atual, ...updates };
+  localStorage.setItem('current_user', JSON.stringify(atualizado));
+
+  const users = JSON.parse(localStorage.getItem('fake_users') || '[]') as StoredUser[];
+  const index = users.findIndex((user) => user.email === atual.email);
+  if (index >= 0) {
+    users[index] = { ...users[index], ...updates };
+    localStorage.setItem('fake_users', JSON.stringify(users));
+  }
+
+  notifyUserChange();
 }
 
 export function useCurrentUser() {
