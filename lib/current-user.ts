@@ -6,6 +6,7 @@ import { normalizarRole, pode, rotuloRole, type Acao, type Area, type Role } fro
 export type UserData = {
   id: string;
   nome: string;
+  email: string;
   role: Role | '';
   roleLabel: string;
   iniciais: string;
@@ -23,6 +24,7 @@ const USER_CHANGED_EVENT = 'current-user-changed';
 const GUEST: UserData = {
   id: '',
   nome: 'Carregando...',
+  email: '',
   role: '',
   roleLabel: 'Aguarde',
   iniciais: '--',
@@ -83,12 +85,19 @@ function readUser(): UserData {
   }
 
   try {
-    const parsed = JSON.parse(stored) as { id?: string; nome?: string; role?: string; roleLabel?: string };
+    const parsed = JSON.parse(stored) as {
+      id?: string;
+      nome?: string;
+      email?: string;
+      role?: string;
+      roleLabel?: string;
+    };
     const nome = parsed.nome || 'Usuário';
     const role = normalizarRole(parsed.role);
     cachedUser = {
       id: parsed.id || '',
       nome,
+      email: parsed.email || '',
       role,
       roleLabel: parsed.roleLabel || (role ? rotuloRole(role) : 'Usuário'),
       iniciais: iniciaisDe(nome),
@@ -132,7 +141,7 @@ export function useCurrentUser() {
       .then(async (res) => {
         const data: unknown = await res.json();
         if (!res.ok) throw new Error('unauth');
-        return data as { nome?: string; role?: string; roleLabel?: string };
+        return data as { nome?: string; email?: string; role?: string; roleLabel?: string };
       })
       .then((data) => {
         if (cancelado) return;
