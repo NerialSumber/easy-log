@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useSyncExternalStore } from 'react';
+import { normalizarRole, pode, rotuloRole, type Acao, type Area, type Role } from '@/lib/permissoes';
 
 export type UserData = {
+  id: string;
   nome: string;
-  email: string;
-  role: string;
+  role: Role | '';
+  roleLabel: string;
   iniciais: string;
 };
 
@@ -19,9 +21,10 @@ type StoredUser = {
 const USER_CHANGED_EVENT = 'current-user-changed';
 
 const GUEST: UserData = {
+  id: '',
   nome: 'Carregando...',
-  email: '',
-  role: 'Aguarde',
+  role: '',
+  roleLabel: 'Aguarde',
   iniciais: '--',
 };
 
@@ -35,10 +38,10 @@ function subscribe(onStoreChange: () => void) {
   };
 
   window.addEventListener('storage', onChange);
-  window.addEventListener(USER_CHANGED_EVENT, onChange);
+  window.addEventListener('easylog-user', onChange);
   return () => {
     window.removeEventListener('storage', onChange);
-    window.removeEventListener(USER_CHANGED_EVENT, onChange);
+    window.removeEventListener('easylog-user', onChange);
   };
 }
 
@@ -80,12 +83,14 @@ function readUser(): UserData {
   }
 
   try {
-    const parsed = JSON.parse(stored) as StoredUser;
+    const parsed = JSON.parse(stored) as { id?: string; nome?: string; role?: string; roleLabel?: string };
     const nome = parsed.nome || 'Usuário';
+    const role = normalizarRole(parsed.role);
     cachedUser = {
+      id: parsed.id || '',
       nome,
-      email: parsed.email || '',
-      role: parsed.role || 'Administrador',
+      role,
+      roleLabel: parsed.roleLabel || (role ? rotuloRole(role) : 'Usuário'),
       iniciais: iniciaisDe(nome),
     };
   } catch {
@@ -121,10 +126,43 @@ export function useCurrentUser() {
   const user = useSyncExternalStore(subscribe, readUser, () => GUEST);
 
   useEffect(() => {
-    if (!localStorage.getItem('current_user')) {
-      window.location.href = '/login';
-    }
+    let cancelado = false;
+
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then(async (res) => {
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error('unauth');
+        return data as { nome?: string; role?: string; roleLabel?: string };
+      })
+      .then((data) => {
+        if (cancelado) return;
+        localStorage.setItem('current_user', JSON.stringify(data));
+        window.dispatchEvent(new Event('easylog-user'));
+      })
+      .catch(() => {
+        if (cancelado) return;
+        localStorage.removeItem('current_user');
+        window.location.href = '/login';
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   return user;
+}
+
+export function useExigirPermissao(area: Area, acao: Acao = 'ver') {
+  const user = useCurrentUser();
+  const pronto = user.role === 'ADMIN' || user.role === 'PROJETISTA';
+  const permitido = pode(user.role, area, acao);
+
+  useEffect(() => {
+    if (pronto && !permitido) {
+      window.location.replace('/');
+    }
+  }, [pronto, permitido]);
+
+  return { user, permitido, pronto };
 }

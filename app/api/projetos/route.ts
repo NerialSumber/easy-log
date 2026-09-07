@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { exigirPermissao } from '@/lib/auth';
 import {
-  ensureUsuarioPadrao,
   parsePeriodoProjeto,
   prismaErrorMessage,
   projetoInclude,
@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const acesso = await exigirPermissao('projetos');
+    if (!acesso.ok) return acesso.resposta;
     const projetos = await prisma.projeto.findMany({
       include: projetoInclude,
       orderBy: { criadoEm: 'desc' },
@@ -49,7 +51,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const usuarioPadrao = await ensureUsuarioPadrao();
+    const acesso = await exigirPermissao('projetos', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
 
     const novoProjeto = await prisma.projeto.create({
       data: {
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
         nome: nome.trim(),
         qtdeMadeira: qtdeMadeira ? parseFloat(qtdeMadeira) : 0,
         status: 'ABERTO',
-        usuarioId: usuarioPadrao.id,
+        usuarioId: acesso.usuario.id,
         clienteId: resolvedClienteId,
         dataInicio: periodo.dataInicio,
         dataFim: periodo.dataFim,

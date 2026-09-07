@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 function dadosEdicao(body: unknown) {
@@ -28,6 +29,8 @@ function arredondarQuantidade(valor: number) {
 
 export async function PATCH(request: Request, { params }: Context) {
   try {
+    const acesso = await exigirPermissao('estoque', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     const movimento = lerMovimento(await request.json());
     if (!movimento) {
@@ -59,6 +62,8 @@ export async function PATCH(request: Request, { params }: Context) {
 
 export async function PUT(request: Request, { params }: Context) {
   try {
+    const acesso = await exigirPermissao('estoque', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     const data = dadosEdicao(await request.json());
     if (!data) return NextResponse.json({ error: 'Preencha o nome e a unidade corretamente.' }, { status: 400 });
@@ -72,6 +77,8 @@ export async function PUT(request: Request, { params }: Context) {
 
 export async function DELETE(_request: Request, { params }: Context) {
   try {
+    const acesso = await exigirPermissao('estoque', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     await prisma.itemEstoque.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
