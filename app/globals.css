@@ -1,8 +1,57 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f3f3f3;
+  --surface: #ffffff;
+  --ink: #141414;
+  --muted: #5c5c5c;
+  --faint: #737373;
+  --line: #e4e4e4;
+  --soft: #f6f6f6;
+  --accent: #9f1b1b;
+  --accent-fill: #9f1b1b;
+  --on-accent: #ffffff;
+  --danger: #8f1818;
+  --danger-soft: #f8ecec;
+  --signal: #2a2a2a;
+  --signal-soft: #efefef;
+  --track: #dedede;
+}
+
+body.dark-theme {
+  --canvas: #0c0c0c;
+  --surface: #161616;
+  --ink: #f4f4f4;
+  --muted: #d0d0d0;
+  --faint: #a8a8a8;
+  --line: #2c2c2c;
+  --soft: #202020;
+  --accent: #f0b4b4;
+  --accent-fill: #9f1b1b;
+  --on-accent: #ffffff;
+  --danger: #f0b4b4;
+  --danger-soft: #2a1616;
+  --signal: #f0f0f0;
+  --signal-soft: #242424;
+  --track: #3a3a3a;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
+  --color-track: var(--track);
 }
 
 body {
@@ -10,36 +59,21 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-}
-
-body.dark-theme {
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-body.dark-theme .bg-white {
-  background-color: #1e293b;
-}
-
-body.dark-theme .text-\[\#1e293b\],
-body.dark-theme .text-\[\#334155\] {
-  color: #e2e8f0;
-}
-
-body.dark-theme .text-\[\#64748b\] {
-  color: #94a3b8;
-}
-
-body.dark-theme .border-\[\#e2e8f0\],
-body.dark-theme .border-\[\#cbd5e1\] {
-  border-color: #475569;
+  background: var(--canvas);
+  color: var(--ink);
 }
 
 body.dark-theme input,
 body.dark-theme textarea,
 body.dark-theme select {
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: var(--soft);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+body.dark-theme input::placeholder,
+body.dark-theme textarea::placeholder {
+  color: var(--faint);
 }
 
 html.large-font {

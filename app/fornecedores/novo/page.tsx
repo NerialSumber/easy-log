@@ -55,63 +55,59 @@ export default function NovoFornecedor() {
         />
       }
     >
-      <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+      <div className="border-line bg-surface overflow-hidden rounded-xl border">
         <div className="p-6">
-          <h2 className="text-lg leading-7 font-bold text-[#1e293b]">
-            Dados do Fornecedor
-          </h2>
+          <h2 className="text-ink text-lg leading-7 font-bold">Dados do Fornecedor</h2>
         </div>
         <form onSubmit={handleSalvar} className="flex flex-col gap-4 p-6 pt-0">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">Nome *</label>
+            <label className="text-ink text-sm font-bold">Nome *</label>
             <input
               type="text"
               required
               value={nome}
               onChange={(event) => setNome(event.target.value)}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+              className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
             />
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[#1e293b]">Telefone</label>
+              <label className="text-ink text-sm font-bold">Telefone</label>
               <input
                 type="tel"
                 value={telefone}
                 onChange={(event) => setTelefone(formatarTelefone(event.target.value))}
-                className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                 placeholder="(00) 00000-0000"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[#1e293b]">E-mail</label>
+              <label className="text-ink text-sm font-bold">E-mail</label>
               <input
                 type="email"
                 required={!telefone}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
               />
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">Endereço</label>
+            <label className="text-ink text-sm font-bold">Endereço</label>
             <input
               type="text"
               value={endereco}
               onChange={(event) => setEndereco(event.target.value)}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+              className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">
-              Produtos fornecidos
-            </label>
+            <label className="text-ink text-sm font-bold">Produtos fornecidos</label>
             <div className="flex flex-wrap gap-2">
               {produtos.map((produto) => (
                 <span
                   key={produto}
-                  className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800"
+                  className="bg-danger-soft text-danger inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
                 >
                   {produto}
                   <button
@@ -119,7 +115,7 @@ export default function NovoFornecedor() {
                     onClick={() =>
                       setProdutos(produtos.filter((item) => item !== produto))
                     }
-                    className="text-orange-700"
+                    className="text-accent"
                     aria-label={`Remover ${produto}`}
                   >
                     <span aria-hidden="true">x</span>
@@ -139,21 +135,21 @@ export default function NovoFornecedor() {
                   setNovoProduto('');
                 }
               }}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+              className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
               placeholder="Digite um produto e pressione Enter"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Link
               href="/fornecedores"
-              className="rounded-lg bg-slate-100 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              className="bg-soft text-muted hover:bg-soft rounded-lg px-6 py-3 text-sm font-bold"
             >
               Cancelar
             </Link>
             <button
               type="submit"
               disabled={salvando}
-              className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
+              className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-bold disabled:opacity-60"
             >
               <Save className="size-4" />
               {salvando ? 'Salvando...' : 'Salvar Fornecedor'}

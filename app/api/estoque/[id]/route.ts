@@ -34,10 +34,14 @@ export async function PATCH(request: Request, { params }: Context) {
     const { id } = await params;
     const movimento = lerMovimento(await request.json());
     if (!movimento) {
-      return NextResponse.json({ error: 'Informe a quantidade a movimentar.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Informe a quantidade a movimentar.' },
+        { status: 400 },
+      );
     }
 
-    const delta = movimento.operacao === 'entrada' ? movimento.quantidade : -movimento.quantidade;
+    const delta =
+      movimento.operacao === 'entrada' ? movimento.quantidade : -movimento.quantidade;
     const resultado = await prisma.$transaction(async (tx) => {
       const atual = await tx.itemEstoque.findUnique({ where: { id } });
       if (!atual) return { tipo: 'nao-encontrado' as const };
@@ -51,7 +55,10 @@ export async function PATCH(request: Request, { params }: Context) {
       return NextResponse.json({ error: 'Item não encontrado.' }, { status: 404 });
     }
     if (resultado.tipo === 'insuficiente') {
-      return NextResponse.json({ error: 'Quantidade insuficiente no estoque.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Quantidade insuficiente no estoque.' },
+        { status: 400 },
+      );
     }
     return NextResponse.json(resultado.item);
   } catch (error) {
@@ -66,7 +73,11 @@ export async function PUT(request: Request, { params }: Context) {
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
     const data = dadosEdicao(await request.json());
-    if (!data) return NextResponse.json({ error: 'Preencha o nome e a unidade corretamente.' }, { status: 400 });
+    if (!data)
+      return NextResponse.json(
+        { error: 'Preencha o nome e a unidade corretamente.' },
+        { status: 400 },
+      );
     const atualizado = await prisma.itemEstoque.update({ where: { id }, data });
     return NextResponse.json(atualizado);
   } catch (error) {

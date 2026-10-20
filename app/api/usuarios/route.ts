@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { exigirPermissao, hashSenha, lerCamposAuth, paraUsuarioPublico } from '@/lib/auth';
+import {
+  exigirPermissao,
+  hashSenha,
+  lerCamposAuth,
+  paraUsuarioPublico,
+} from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +30,12 @@ export async function POST(request: Request) {
     if (!acesso.ok) return acesso.resposta;
 
     const campos = lerCamposAuth(await request.json());
-    if (!campos || campos.nome.length < 2 || !campos.email.includes('@') || campos.senha.length < 6) {
+    if (
+      !campos ||
+      campos.nome.length < 2 ||
+      !campos.email.includes('@') ||
+      campos.senha.length < 6
+    ) {
       return NextResponse.json(
         { error: 'Informe nome, e-mail válido e senha com pelo menos 6 caracteres.' },
         { status: 400 },
@@ -34,7 +44,10 @@ export async function POST(request: Request) {
 
     const jaExiste = await prisma.usuario.findUnique({ where: { email: campos.email } });
     if (jaExiste) {
-      return NextResponse.json({ error: 'Já existe uma conta com este e-mail.' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Já existe uma conta com este e-mail.' },
+        { status: 409 },
+      );
     }
 
     const criado = await prisma.usuario.create({

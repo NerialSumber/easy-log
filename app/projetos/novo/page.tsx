@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Save } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { ClienteField } from '@/components/cliente-field';
@@ -10,15 +10,25 @@ import { PageHeader } from '@/components/page-header';
 import { PeriodoField } from '@/components/periodo-field';
 import type { ClienteResumo } from '@/lib/types';
 
-export default function NovoProjeto() {
-  const router = useRouter();
+function lerMadeira(valor: string | null) {
+  if (!valor || !valor.trim()) return '';
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0 ? String(numero) : '';
+}
 
-  const [codigo, setCodigo] = useState('');
-  const [nome, setNome] = useState('');
-  const [qtdeMadeira, setQtdeMadeira] = useState('');
+function FormularioNovoProjeto() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const nomeInicial = searchParams.get('nome')?.trim() ?? '';
+  const madeiraInicial = lerMadeira(searchParams.get('madeira'));
+  const clienteInicial = searchParams.get('cliente')?.trim() ?? '';
+  const aPartirDe = nomeInicial.length > 0;
+
+  const [nome, setNome] = useState(nomeInicial);
+  const [qtdeMadeira, setQtdeMadeira] = useState(madeiraInicial);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [clienteId, setClienteId] = useState('');
+  const [clienteId, setClienteId] = useState(clienteInicial);
   const [clienteNome, setClienteNome] = useState('');
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [salvando, setSalvando] = useState(false);
@@ -55,8 +65,7 @@ export default function NovoProjeto() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          codigo,
-          nome,
+          nome: aPartirDe ? nomeInicial : nome,
           qtdeMadeira,
           dataInicio,
           dataFim,
@@ -85,15 +94,17 @@ export default function NovoProjeto() {
       header={
         <PageHeader
           title="Novo Projeto"
-          subtitle="Informe o cliente, o código e os dados iniciais do projeto."
+          subtitle={
+            aPartirDe
+              ? `Repetindo “${nomeInicial}”. Ajuste cliente, madeira e o período.`
+              : 'Informe o cliente e os dados iniciais do projeto.'
+          }
         />
       }
     >
-      <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+      <div className="border-line bg-surface overflow-hidden rounded-xl border">
         <div className="p-6">
-          <h2 className="text-lg leading-7 font-bold text-[#1e293b]">
-            Detalhes do Projeto
-          </h2>
+          <h2 className="text-ink text-lg leading-7 font-bold">Detalhes do Projeto</h2>
         </div>
 
         <form onSubmit={handleSalvarProjeto} className="flex flex-col gap-4 p-6 pt-0">
@@ -109,26 +120,20 @@ export default function NovoProjeto() {
           />
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">Código *</label>
-            <input
-              type="text"
-              required
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
-              placeholder="PRJ-001"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">Nome do Projeto *</label>
-            <input
-              type="text"
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
-            />
+            <label className="text-ink text-sm font-bold">Nome do Projeto *</label>
+            {aPartirDe ? (
+              <p className="border-line bg-soft text-ink rounded-lg border px-4 py-3 text-sm">
+                {nomeInicial}
+              </p>
+            ) : (
+              <input
+                type="text"
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
+              />
+            )}
           </div>
 
           <PeriodoField
@@ -139,16 +144,14 @@ export default function NovoProjeto() {
           />
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-[#1e293b]">
-              Qtd. Madeira (m²) *
-            </label>
+            <label className="text-ink text-sm font-bold">Qtd. Madeira (m²) *</label>
             <input
               type="number"
               step="0.01"
               required
               value={qtdeMadeira}
               onChange={(e) => setQtdeMadeira(e.target.value)}
-              className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+              className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
               placeholder="0.00"
             />
           </div>
@@ -156,14 +159,14 @@ export default function NovoProjeto() {
           <div className="flex justify-end gap-3 pt-2">
             <Link
               href="/projetos"
-              className="rounded-lg bg-slate-100 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              className="bg-soft text-muted hover:bg-soft rounded-lg px-6 py-3 text-sm font-bold"
             >
               Cancelar
             </Link>
             <button
               type="submit"
               disabled={salvando}
-              className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
+              className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-bold disabled:opacity-60"
             >
               <Save className="size-4" />
               {salvando ? 'Salvando...' : 'Salvar Projeto'}
@@ -172,5 +175,22 @@ export default function NovoProjeto() {
         </form>
       </div>
     </AppShell>
+  );
+}
+
+export default function NovoProjeto() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell
+          active="projetos"
+          header={<PageHeader title="Novo Projeto" subtitle="Carregando formulário..." />}
+        >
+          <p className="text-muted text-sm">Carregando formulário...</p>
+        </AppShell>
+      }
+    >
+      <FormularioNovoProjeto />
+    </Suspense>
   );
 }

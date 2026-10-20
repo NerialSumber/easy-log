@@ -19,7 +19,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={inter.className}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('tema_noturno')==='true')document.body.classList.add('dark-theme');if(localStorage.getItem('fonte_maior')==='true')document.documentElement.classList.add('large-font')}catch(e){}",
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

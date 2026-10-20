@@ -24,7 +24,9 @@ export async function GET() {
   try {
     const acesso = await exigirPermissao('estoque');
     if (!acesso.ok) return acesso.resposta;
-    const itens = await prisma.itemEstoque.findMany({ orderBy: [{ categoria: 'asc' }, { nome: 'asc' }] });
+    const itens = await prisma.itemEstoque.findMany({
+      orderBy: [{ categoria: 'asc' }, { nome: 'asc' }],
+    });
     return NextResponse.json(itens);
   } catch (error) {
     console.error('ERRO AO BUSCAR ESTOQUE:', error);
@@ -37,7 +39,11 @@ export async function POST(request: Request) {
     const acesso = await exigirPermissao('estoque', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const item = lerItem(await request.json());
-    if (!item) return NextResponse.json({ error: 'Preencha os dados do item corretamente.' }, { status: 400 });
+    if (!item)
+      return NextResponse.json(
+        { error: 'Preencha os dados do item corretamente.' },
+        { status: 400 },
+      );
     const criado = await prisma.itemEstoque.create({ data: item });
     return NextResponse.json(criado, { status: 201 });
   } catch (error) {
