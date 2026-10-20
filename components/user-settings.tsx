@@ -2,19 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Accessibility, Eye, EyeOff, KeyRound, LogOut, Pencil, Settings, UserRound, X } from 'lucide-react';
-import { persistirDadosUsuario, senhaAtualConfere, useCurrentUser } from '@/lib/current-user';
+import {
+  Accessibility,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogOut,
+  Pencil,
+  Settings,
+  UserRound,
+  X,
+} from 'lucide-react';
+import {
+  persistirDadosUsuario,
+  senhaAtualConfere,
+  useCurrentUser,
+} from '@/lib/current-user';
 
 type ModoUsuario = 'visualizar' | 'editar' | 'senha';
 
 const campoEditavel =
-  'h-11 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#1e293b] transition outline-none placeholder:text-[#94a3b8] focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/15';
+  'h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink transition outline-none placeholder:text-faint focus:border-accent focus:ring-2 focus:ring-accent/15';
 
 function DadoUsuario({ label, valor }: { label: string; valor: string }) {
   return (
     <div>
-      <p className="mb-1 text-sm font-semibold text-[#334155]">{label}</p>
-      <p className="text-base text-[#1e293b]">{valor || '—'}</p>
+      <p className="text-ink mb-1 text-sm font-semibold">{label}</p>
+      <p className="text-ink text-base">{valor || '—'}</p>
     </div>
   );
 }
@@ -173,293 +187,290 @@ export function UserSettings({ className = '' }: { className?: string }) {
         onClick={abrirConfiguracoes}
         aria-label="Abrir configurações do usuário"
         title="Configurações"
-        className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[#475569] transition hover:bg-[#f1f5f9] hover:text-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none ${className}`}
+        className={`text-muted hover:bg-soft hover:text-accent focus:ring-accent/30 flex size-9 shrink-0 items-center justify-center rounded-lg transition focus:ring-2 focus:outline-none ${className}`}
       >
         <Settings size={24} strokeWidth={2} />
       </button>
 
       {isOpen
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/40 px-4 py-6">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="user-settings-title"
-            className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl"
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="mb-1 text-xs font-semibold tracking-[0.14em] text-[#0f766e] uppercase">
-                  Minha conta
-                </p>
-                <h2 id="user-settings-title" className="text-xl font-bold text-[#1e293b]">
-                  Configurações do usuário
-                </h2>
-                <p className="mt-1 text-sm text-[#64748b]">
-                  {alterandoSenha
-                    ? 'Defina uma nova senha de acesso.'
-                    : editando
-                      ? 'Atualize seus dados de acesso.'
-                      : 'Seus dados atuais estão bloqueados para edição.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fecharConfiguracoes}
-                aria-label="Fechar configurações"
-                title="Fechar"
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[#64748b] transition hover:bg-[#f1f5f9] hover:text-[#1e293b] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="user-settings-title"
+                className="bg-surface w-full max-w-lg rounded-xl p-6"
               >
-                <X size={19} />
-              </button>
-            </div>
-
-            <div className="mb-6 flex border-b border-[#e2e8f0]">
-              <button
-                type="button"
-                onClick={() => {
-                  setAbaAtiva('usuario');
-                  setErro('');
-                }}
-                className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'usuario' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-[#64748b] hover:text-[#334155]'}`}
-              >
-                <UserRound size={17} />
-                Usuário
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAbaAtiva('acessibilidade');
-                  setErro('');
-                }}
-                className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'acessibilidade' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-[#64748b] hover:text-[#334155]'}`}
-              >
-                <Accessibility size={17} />
-                Acessibilidade
-              </button>
-            </div>
-
-            {abaAtiva === 'usuario' ? (
-              alterandoSenha ? (
-                <form onSubmit={salvarSenha} className="space-y-5">
-                  {erro ? (
-                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                      {erro}
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-accent mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
+                      Minha conta
                     </p>
-                  ) : null}
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Senha atual
-                    </span>
-                    <input
-                      type={mostrarSenha ? 'text' : 'password'}
-                      value={senhaAtual}
-                      onChange={(event) => setSenhaAtual(event.target.value)}
-                      placeholder="Digite a senha atual"
-                      required
-                      className={campoEditavel}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Nova senha
-                    </span>
-                    <div className="relative">
-                      <input
-                        type={mostrarSenha ? 'text' : 'password'}
-                        value={senha}
-                        onChange={(event) => setSenha(event.target.value)}
-                        placeholder="Digite a nova senha"
-                        required
-                        className={`${campoEditavel} pr-11`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMostrarSenha((atual) => !atual)}
-                        aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                        title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                        className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748b] hover:text-[#0f766e]"
-                      >
-                        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Confirmar nova senha
-                    </span>
-                    <input
-                      type={mostrarSenha ? 'text' : 'password'}
-                      value={confirmacao}
-                      onChange={(event) => setConfirmacao(event.target.value)}
-                      placeholder="Repita a nova senha"
-                      required
-                      className={campoEditavel}
-                    />
-                  </label>
-                  <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
-                    <button
-                      type="button"
-                      onClick={cancelarEdicao}
-                      className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
-                    >
-                      Salvar senha
-                    </button>
-                  </div>
-                </form>
-              ) : editando ? (
-                <form
-                  onSubmit={salvarDados}
-                  className="space-y-5"
-                >
-                  {erro ? (
-                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                      {erro}
+                    <h2 id="user-settings-title" className="text-ink text-xl font-bold">
+                      Configurações do usuário
+                    </h2>
+                    <p className="text-muted mt-1 text-sm">
+                      {alterandoSenha
+                        ? 'Defina uma nova senha de acesso.'
+                        : editando
+                          ? 'Atualize seus dados de acesso.'
+                          : 'Seus dados atuais estão bloqueados para edição.'}
                     </p>
-                  ) : null}
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Nome de usuário
-                    </span>
-                    <input
-                      type="text"
-                      value={nome}
-                      onChange={(event) => setNome(event.target.value)}
-                      placeholder="Digite seu nome"
-                      required
-                      autoFocus
-                      className={campoEditavel}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-[#334155]">
-                      E-mail
-                    </span>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="Digite seu e-mail"
-                      required
-                      className={campoEditavel}
-                    />
-                  </label>
-                  <DadoUsuario label="Função" valor={user.role} />
-                  <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
-                    <button
-                      type="button"
-                      onClick={cancelarEdicao}
-                      className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
-                    >
-                      Salvar alterações
-                    </button>
                   </div>
-                </form>
-              ) : (
-                <div className="space-y-5">
-                  <DadoUsuario label="Nome de usuário" valor={nome} />
-                  <DadoUsuario label="E-mail" valor={email} />
-                  <DadoUsuario label="Função" valor={user.role} />
-                  <div className="flex flex-wrap justify-end gap-3 border-t border-[#e2e8f0] pt-5">
-                    <button
-                      type="button"
-                      onClick={iniciarAlteracaoSenha}
-                      className="flex items-center gap-2 rounded-lg border border-[#cbd5e1] px-4 py-2.5 text-sm font-semibold text-[#334155] transition hover:bg-[#f8fafc]"
-                    >
-                      <KeyRound size={16} />
-                      Alterar senha
-                    </button>
-                    <button
-                      type="button"
-                      onClick={iniciarEdicao}
-                      className="flex items-center gap-2 rounded-lg bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#115e59] focus:ring-2 focus:ring-[#0f766e]/30 focus:outline-none"
-                    >
-                      <Pencil size={16} />
-                      Editar
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : (
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={alternarTemaNoturno}
-                  className="flex w-full items-center justify-between rounded-lg border border-[#e2e8f0] p-4 text-left transition hover:border-[#cbd5e1] hover:bg-[#f8fafc]"
-                >
-                  <span>
-                    <span className="block text-sm font-semibold text-[#334155]">
-                      Tema noturno
-                    </span>
-                    <span className="mt-1 block text-xs text-[#64748b]">
-                      Usar cores mais escuras no site
-                    </span>
-                  </span>
-                  <span
-                    className={`relative h-6 w-11 rounded-full transition ${temaNoturno ? 'bg-[#0f766e]' : 'bg-[#cbd5e1]'}`}
-                  >
-                    <span
-                      className={`absolute top-1 size-4 rounded-full bg-white transition ${temaNoturno ? 'left-6' : 'left-1'}`}
-                    />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={alternarFonteMaior}
-                  className="flex w-full items-center justify-between rounded-lg border border-[#e2e8f0] p-4 text-left transition hover:border-[#cbd5e1] hover:bg-[#f8fafc]"
-                >
-                  <span>
-                    <span className="block text-sm font-semibold text-[#334155]">
-                      Aumentar tamanho da fonte
-                    </span>
-                    <span className="mt-1 block text-xs text-[#64748b]">
-                      Deixar todas as letras do site maiores
-                    </span>
-                  </span>
-                  <span
-                    className={`relative h-6 w-11 rounded-full transition ${fonteMaior ? 'bg-[#0f766e]' : 'bg-[#cbd5e1]'}`}
-                  >
-                    <span
-                      className={`absolute top-1 size-4 rounded-full bg-white transition ${fonteMaior ? 'left-6' : 'left-1'}`}
-                    />
-                  </span>
-                </button>
-                <div className="flex justify-end border-t border-[#e2e8f0] pt-5">
                   <button
                     type="button"
                     onClick={fecharConfiguracoes}
-                    className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
+                    aria-label="Fechar configurações"
+                    title="Fechar"
+                    className="text-muted hover:bg-soft hover:text-ink focus:ring-accent/30 flex size-9 shrink-0 items-center justify-center rounded-lg transition focus:ring-2 focus:outline-none"
                   >
-                    Concluir
+                    <X size={19} />
                   </button>
                 </div>
-              </div>
-            )}
 
-            <div className="mt-6 flex justify-end border-t border-[#e2e8f0] pt-4">
-              <button
-                type="button"
-                onClick={fazerLogout}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#b91c1c] transition hover:bg-[#fef2f2]"
-              >
-                <LogOut size={17} />
-                Sair
-              </button>
-            </div>
-          </section>
-        </div>,
+                <div className="border-line mb-6 flex border-b">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAbaAtiva('usuario');
+                      setErro('');
+                    }}
+                    className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'usuario' ? 'border-accent text-accent' : 'text-muted hover:text-ink border-transparent'}`}
+                  >
+                    <UserRound size={17} />
+                    Usuário
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAbaAtiva('acessibilidade');
+                      setErro('');
+                    }}
+                    className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${abaAtiva === 'acessibilidade' ? 'border-accent text-accent' : 'text-muted hover:text-ink border-transparent'}`}
+                  >
+                    <Accessibility size={17} />
+                    Acessibilidade
+                  </button>
+                </div>
+
+                {abaAtiva === 'usuario' ? (
+                  alterandoSenha ? (
+                    <form onSubmit={salvarSenha} className="space-y-5">
+                      {erro ? (
+                        <p className="border-danger bg-danger-soft text-danger rounded-lg border px-3 py-2 text-sm font-medium">
+                          {erro}
+                        </p>
+                      ) : null}
+                      <label className="block">
+                        <span className="text-ink mb-2 block text-sm font-semibold">
+                          Senha atual
+                        </span>
+                        <input
+                          type={mostrarSenha ? 'text' : 'password'}
+                          value={senhaAtual}
+                          onChange={(event) => setSenhaAtual(event.target.value)}
+                          placeholder="Digite a senha atual"
+                          required
+                          className={campoEditavel}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-ink mb-2 block text-sm font-semibold">
+                          Nova senha
+                        </span>
+                        <div className="relative">
+                          <input
+                            type={mostrarSenha ? 'text' : 'password'}
+                            value={senha}
+                            onChange={(event) => setSenha(event.target.value)}
+                            placeholder="Digite a nova senha"
+                            required
+                            className={`${campoEditavel} pr-11`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setMostrarSenha((atual) => !atual)}
+                            aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                            title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                            className="text-muted hover:text-accent absolute top-1/2 right-3 -translate-y-1/2"
+                          >
+                            {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </label>
+                      <label className="block">
+                        <span className="text-ink mb-2 block text-sm font-semibold">
+                          Confirmar nova senha
+                        </span>
+                        <input
+                          type={mostrarSenha ? 'text' : 'password'}
+                          value={confirmacao}
+                          onChange={(event) => setConfirmacao(event.target.value)}
+                          placeholder="Repita a nova senha"
+                          required
+                          className={campoEditavel}
+                        />
+                      </label>
+                      <div className="border-line flex justify-end gap-3 border-t pt-5">
+                        <button
+                          type="button"
+                          onClick={cancelarEdicao}
+                          className="text-muted hover:bg-soft rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="bg-accent-fill text-on-accent focus:ring-accent/30 rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 focus:ring-2 focus:outline-none"
+                        >
+                          Salvar senha
+                        </button>
+                      </div>
+                    </form>
+                  ) : editando ? (
+                    <form onSubmit={salvarDados} className="space-y-5">
+                      {erro ? (
+                        <p className="border-danger bg-danger-soft text-danger rounded-lg border px-3 py-2 text-sm font-medium">
+                          {erro}
+                        </p>
+                      ) : null}
+                      <label className="block">
+                        <span className="text-ink mb-2 block text-sm font-semibold">
+                          Nome de usuário
+                        </span>
+                        <input
+                          type="text"
+                          value={nome}
+                          onChange={(event) => setNome(event.target.value)}
+                          placeholder="Digite seu nome"
+                          required
+                          autoFocus
+                          className={campoEditavel}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-ink mb-2 block text-sm font-semibold">
+                          E-mail
+                        </span>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="Digite seu e-mail"
+                          required
+                          className={campoEditavel}
+                        />
+                      </label>
+                      <DadoUsuario label="Função" valor={user.role} />
+                      <div className="border-line flex justify-end gap-3 border-t pt-5">
+                        <button
+                          type="button"
+                          onClick={cancelarEdicao}
+                          className="text-muted hover:bg-soft rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="bg-accent-fill text-on-accent focus:ring-accent/30 rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 focus:ring-2 focus:outline-none"
+                        >
+                          Salvar alterações
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="space-y-5">
+                      <DadoUsuario label="Nome de usuário" valor={nome} />
+                      <DadoUsuario label="E-mail" valor={email} />
+                      <DadoUsuario label="Função" valor={user.role} />
+                      <div className="border-line flex flex-wrap justify-end gap-3 border-t pt-5">
+                        <button
+                          type="button"
+                          onClick={iniciarAlteracaoSenha}
+                          className="border-line text-ink hover:bg-soft flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition"
+                        >
+                          <KeyRound size={16} />
+                          Alterar senha
+                        </button>
+                        <button
+                          type="button"
+                          onClick={iniciarEdicao}
+                          className="bg-accent-fill text-on-accent focus:ring-accent/30 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 focus:ring-2 focus:outline-none"
+                        >
+                          <Pencil size={16} />
+                          Editar
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={alternarTemaNoturno}
+                      className="border-line hover:border-line hover:bg-soft flex w-full items-center justify-between rounded-lg border p-4 text-left transition"
+                    >
+                      <span>
+                        <span className="text-ink block text-sm font-semibold">
+                          Tema noturno
+                        </span>
+                        <span className="text-muted mt-1 block text-xs">
+                          Usar cores mais escuras no site
+                        </span>
+                      </span>
+                      <span
+                        className={`relative h-6 w-11 rounded-full transition ${temaNoturno ? 'bg-accent-fill' : 'bg-track'}`}
+                      >
+                        <span
+                          className={`absolute top-1 size-4 rounded-full bg-white transition ${temaNoturno ? 'left-6' : 'left-1'}`}
+                        />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={alternarFonteMaior}
+                      className="border-line hover:border-line hover:bg-soft flex w-full items-center justify-between rounded-lg border p-4 text-left transition"
+                    >
+                      <span>
+                        <span className="text-ink block text-sm font-semibold">
+                          Aumentar tamanho da fonte
+                        </span>
+                        <span className="text-muted mt-1 block text-xs">
+                          Deixar todas as letras do site maiores
+                        </span>
+                      </span>
+                      <span
+                        className={`relative h-6 w-11 rounded-full transition ${fonteMaior ? 'bg-accent-fill' : 'bg-track'}`}
+                      >
+                        <span
+                          className={`absolute top-1 size-4 rounded-full bg-white transition ${fonteMaior ? 'left-6' : 'left-1'}`}
+                        />
+                      </span>
+                    </button>
+                    <div className="border-line flex justify-end border-t pt-5">
+                      <button
+                        type="button"
+                        onClick={fecharConfiguracoes}
+                        className="text-muted hover:bg-soft rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                      >
+                        Concluir
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-line mt-6 flex justify-end border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={fazerLogout}
+                    className="text-danger hover:bg-danger-soft flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition"
+                  >
+                    <LogOut size={17} />
+                    Sair
+                  </button>
+                </div>
+              </section>
+            </div>,
             document.body,
           )
         : null}

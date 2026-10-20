@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import Image from 'next/image';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Logo } from '@/components/logo';
 
 type UsuarioSessao = {
   id: string;
@@ -50,115 +50,102 @@ export default function Login() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-row items-center justify-center overflow-hidden bg-slate-50">
-      <div className="relative hidden min-h-screen w-1/2 flex-col items-center justify-center border-r-8 border-orange-600 bg-slate-950 p-12 text-center lg:flex">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/fundo-marcenaria.jpg"
-            alt="Background Marcenaria"
-            fill
-            className="object-cover opacity-30"
-            priority
-          />
-        </div>
-
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="mb-6">
-            <Image
-              src="/logo.jpg"
-              alt="Logo Easy-Log"
-              width={180}
-              height={180}
-              className="rounded-xl"
-              priority
-            />
-          </div>
-
-          <h1 className="mb-5 text-6xl font-extrabold tracking-tight text-white drop-shadow-lg">
-            Easy-Log
-          </h1>
-
-          <p className="max-w-md text-xl leading-relaxed font-medium text-slate-200 drop-shadow-md">
-            Simplifique sua oficina com Easy-log
+    <main className="bg-canvas flex min-h-screen">
+      <aside className="hidden min-h-screen w-[42%] flex-col justify-between bg-black px-14 py-12 text-white lg:flex">
+        <div className="h-px w-10 bg-[#9f1b1b]" />
+        <div>
+          <Logo className="size-24" />
+          <p className="mt-10 text-4xl font-medium tracking-tight">Easy-Log</p>
+          <p className="mt-4 max-w-xs text-base leading-relaxed text-neutral-400">
+            Projetos, madeira e prazos da oficina.
           </p>
         </div>
-      </div>
+        <p className="text-sm text-neutral-500">Easy Log</p>
+      </aside>
 
-      <div className="flex w-full items-center justify-center p-6 md:p-12 lg:w-1/2">
-        <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-10 shadow-2xl shadow-slate-200">
-          <div className="mb-8 text-center">
-            <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900">
-              Acesse sua conta
-            </h2>
-            <p className="mt-2 font-medium text-slate-500">Bem-vindo de volta!</p>
-          </div>
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-100 p-3 text-center text-sm font-semibold text-red-700">
-              {error}
+      <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex flex-1 items-center justify-center px-6 py-16">
+          <div className="w-full max-w-sm">
+            <div className="text-ink mb-8 flex items-center gap-3 lg:hidden">
+              <Logo className="size-10" />
+              <span className="text-lg font-medium tracking-tight">Easy-Log</span>
             </div>
-          )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-800">E-mail</label>
-              <div className="relative">
-                <Mail className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <h1 className="text-ink text-2xl font-medium tracking-tight">
+              Acesse sua conta
+            </h1>
+
+            {error ? (
+              <p className="border-danger bg-danger-soft text-danger mt-6 border px-4 py-3 text-sm">
+                {error}
+              </p>
+            ) : null}
+
+            <form onSubmit={handleLogin} className="mt-8 space-y-5">
+              <div>
+                <label htmlFor="email" className="text-ink mb-2 block text-sm">
+                  E-mail
+                </label>
                 <input
+                  id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pr-4 pl-12 text-slate-950 transition-all outline-none focus:bg-white focus:ring-2 focus:ring-orange-500"
+                  className="border-line bg-soft text-ink focus:border-accent focus:bg-surface w-full rounded-lg border px-4 py-3 outline-none"
                   placeholder="admin@easylog.com"
+                  autoComplete="email"
                   required
                 />
               </div>
-            </div>
 
-            <div>
-              <div className="mb-2 flex justify-between">
-                <label className="block text-sm font-semibold text-slate-800">Senha</label>
-                <a href="#" className="text-sm font-semibold text-orange-600 hover:text-orange-700">
-                  Esqueci a senha?
-                </a>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="senha" className="text-ink text-sm">
+                    Senha
+                  </label>
+                  <a href="#" className="text-accent text-sm">
+                    Esqueci a senha?
+                  </a>
+                </div>
+                <div className="relative">
+                  <input
+                    id="senha"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="border-line bg-soft text-ink focus:border-accent focus:bg-surface w-full rounded-lg border px-4 py-3 pr-12 outline-none"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    className="text-faint hover:text-ink absolute top-1/2 right-4 -translate-y-1/2"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="size-5" />
+                    ) : (
+                      <Eye className="size-5" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-4 pr-12 pl-12 text-slate-950 transition-all outline-none focus:bg-white focus:ring-2 focus:ring-orange-500"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 right-4 -translate-y-1/2"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-slate-400 transition-colors hover:text-slate-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-slate-400 transition-colors hover:text-slate-600" />
-                  )}
-                </button>
-              </div>
-            </div>
 
-            <div className="space-y-4 pt-4">
               <button
                 type="submit"
                 disabled={enviando}
-                className="w-full rounded-2xl bg-orange-600 px-4 py-4 font-bold text-white shadow-lg shadow-orange-100 transition-all hover:bg-orange-700 active:scale-[0.98] disabled:opacity-60"
+                className="bg-accent-fill text-on-accent w-full rounded-lg px-4 py-3 text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {enviando ? 'Aguarde...' : 'Entrar no Sistema'}
+                {enviando ? 'Aguarde...' : 'Entrar'}
               </button>
-              <p className="text-center text-sm font-medium text-slate-600">
-                Não possui acesso? Peça uma conta ao administrador.
-              </p>
-            </div>
-          </form>
+            </form>
+
+            <p className="text-muted mt-6 text-sm">
+              Não possui acesso? Peça uma conta ao administrador.
+            </p>
+          </div>
         </div>
       </div>
     </main>

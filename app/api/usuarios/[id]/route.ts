@@ -11,8 +11,14 @@ function lerEdicao(body: unknown) {
   const dados = body as Record<string, unknown>;
   const nome = typeof dados.nome === 'string' ? dados.nome.trim() : '';
   const email = typeof dados.email === 'string' ? dados.email.trim().toLowerCase() : '';
-  const senha = typeof dados.password === 'string' ? dados.password : typeof dados.senha === 'string' ? dados.senha : '';
-  const role = dados.role === 'ADMIN' ? 'ADMIN' : dados.role === 'PROJETISTA' ? 'PROJETISTA' : '';
+  const senha =
+    typeof dados.password === 'string'
+      ? dados.password
+      : typeof dados.senha === 'string'
+        ? dados.senha
+        : '';
+  const role =
+    dados.role === 'ADMIN' ? 'ADMIN' : dados.role === 'PROJETISTA' ? 'PROJETISTA' : '';
   if (nome.length < 2 || !email.includes('@') || !role) return null;
   if (senha && senha.length < 6) return null;
   return { nome, email, senha, role: role as 'ADMIN' | 'PROJETISTA' };
@@ -32,25 +38,40 @@ export async function PUT(request: Request, { params }: Context) {
     const campos = lerEdicao(await request.json());
     if (!campos) {
       return NextResponse.json(
-        { error: 'Informe nome, e-mail válido e função. A nova senha, se houver, precisa ter 6 caracteres.' },
+        {
+          error:
+            'Informe nome, e-mail válido e função. A nova senha, se houver, precisa ter 6 caracteres.',
+        },
         { status: 400 },
       );
     }
 
     const alvo = await prisma.usuario.findUnique({ where: { id } });
-    if (!alvo) return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+    if (!alvo)
+      return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
 
     if (id === acesso.usuario.id && campos.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Você não pode alterar a própria função.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Você não pode alterar a própria função.' },
+        { status: 400 },
+      );
     }
 
     if (alvo.role === 'ADMIN' && campos.role !== 'ADMIN' && (await ehUltimoAdmin(id))) {
-      return NextResponse.json({ error: 'Não é possível remover o último administrador.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Não é possível remover o último administrador.' },
+        { status: 400 },
+      );
     }
 
-    const emailEmUso = await prisma.usuario.findFirst({ where: { email: campos.email, NOT: { id } } });
+    const emailEmUso = await prisma.usuario.findFirst({
+      where: { email: campos.email, NOT: { id } },
+    });
     if (emailEmUso) {
-      return NextResponse.json({ error: 'Já existe uma conta com este e-mail.' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Já existe uma conta com este e-mail.' },
+        { status: 409 },
+      );
     }
 
     const atualizado = await prisma.usuario.update({
@@ -76,17 +97,28 @@ export async function DELETE(_request: Request, { params }: Context) {
     const { id } = await params;
 
     if (id === acesso.usuario.id) {
-      return NextResponse.json({ error: 'Você não pode excluir a própria conta.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Você não pode excluir a própria conta.' },
+        { status: 400 },
+      );
     }
 
     if (await ehUltimoAdmin(id)) {
-      return NextResponse.json({ error: 'Não é possível excluir o último administrador.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Não é possível excluir o último administrador.' },
+        { status: 400 },
+      );
     }
 
     await prisma.usuario.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'P2003') {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2003'
+    ) {
       return NextResponse.json(
         { error: 'Este usuário possui projetos e não pode ser excluído.' },
         { status: 400 },

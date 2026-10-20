@@ -146,7 +146,7 @@ export default function FornecedoresCRUD() {
             podeEditar ? (
               <Link
                 href="/fornecedores/novo"
-                className="flex items-center justify-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-base leading-6 font-medium text-white"
+                className="bg-accent-fill text-on-accent flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-base leading-6 font-medium"
               >
                 <Plus className="size-5" /> Novo Fornecedor
               </Link>
@@ -157,27 +157,27 @@ export default function FornecedoresCRUD() {
     >
       <div className="flex flex-col gap-6">
         <form role="search" onSubmit={(event) => event.preventDefault()}>
-          <div className="flex w-full max-w-[520px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
-            <Search className="size-5 shrink-0 text-[#94a3b8]" />
+          <div className="border-line flex w-full max-w-[520px] items-center gap-2 rounded-lg border px-3 py-2">
+            <Search className="text-faint size-5 shrink-0" />
             <input
               type="search"
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
-              className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
+              className="text-ink placeholder:text-faint w-full bg-transparent text-sm leading-5 outline-none"
               placeholder="Buscar por nome, telefone ou e-mail..."
               aria-label="Buscar por nome ou contato"
             />
-            <Filter className="size-5 shrink-0 text-[#94a3b8]" />
+            <Filter className="text-faint size-5 shrink-0" />
           </div>
         </form>
-        <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
+        <div className="border-line bg-surface overflow-hidden rounded-xl border">
           <table className="min-w-full">
-            <thead className="bg-[#f8fafc]">
-              <tr className="border-b border-[#e2e8f0]">
-                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+            <thead className="bg-soft">
+              <tr className="border-line border-b">
+                <th className="text-muted px-6 py-3 text-left text-xs font-bold tracking-[0.72px] uppercase">
                   Nome
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                <th className="text-muted px-6 py-3 text-left text-xs font-bold tracking-[0.72px] uppercase">
                   Contato
                 </th>
               </tr>
@@ -185,13 +185,13 @@ export default function FornecedoresCRUD() {
             <tbody>
               {carregando ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-center text-[#64748b]">
+                  <td colSpan={2} className="text-muted px-6 py-4 text-center">
                     Carregando fornecedores...
                   </td>
                 </tr>
               ) : filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-center text-[#64748b]">
+                  <td colSpan={2} className="text-muted px-6 py-4 text-center">
                     {busca.trim()
                       ? 'Nenhum fornecedor encontrado.'
                       : 'Nenhum fornecedor cadastrado.'}
@@ -201,24 +201,20 @@ export default function FornecedoresCRUD() {
                 filtrados.map((fornecedor) => (
                   <tr
                     key={fornecedor.id}
-                    className="cursor-pointer border-b border-[#e2e8f0] last:border-b-0 hover:bg-slate-50"
+                    className="border-line hover:bg-soft cursor-pointer border-b last:border-b-0"
                     onClick={() => setDetalhe(fornecedor)}
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-[#0f172a]">
+                    <td className="text-ink px-6 py-4 text-sm font-medium">
                       {fornecedor.nome}
                     </td>
-                    <td className="px-6 py-4 text-right text-sm text-[#64748b]">
+                    <td className="text-muted px-6 py-4 text-right text-sm">
                       <div className="flex flex-col items-end gap-1">
                         <span>
-                          <strong className="font-semibold text-[#334155]">
-                            E-mail:
-                          </strong>{' '}
+                          <strong className="text-ink font-semibold">E-mail:</strong>{' '}
                           {formatarContato(fornecedor).email}
                         </span>
                         <span>
-                          <strong className="font-semibold text-[#334155]">
-                            Telefone:
-                          </strong>{' '}
+                          <strong className="text-ink font-semibold">Telefone:</strong>{' '}
                           {formatarContato(fornecedor).telefone}
                         </span>
                       </div>
@@ -232,15 +228,15 @@ export default function FornecedoresCRUD() {
       </div>
       {detalhe && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
-          <div className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-xl bg-white">
+          <div className="bg-surface flex w-full max-w-[560px] flex-col overflow-hidden rounded-xl">
             <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
+              <h2 className="text-ink text-xl leading-7 font-bold">
                 Detalhes do Fornecedor
               </h2>
               <button
                 type="button"
                 onClick={() => setDetalhe(null)}
-                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                className="bg-soft text-faint rounded-lg p-2"
                 aria-label="Fechar"
               >
                 <X className="size-5" />
@@ -248,48 +244,48 @@ export default function FornecedoresCRUD() {
             </div>
             <div className="flex flex-col gap-5 p-6">
               <div>
-                <p className="text-sm font-bold text-[#1e293b]">Nome</p>
-                <p className="text-sm text-[#0f172a]">{detalhe.nome}</p>
+                <p className="text-ink text-sm font-bold">Nome</p>
+                <p className="text-ink text-sm">{detalhe.nome}</p>
               </div>
               <div>
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div>
-                    <p className="text-sm font-bold text-[#1e293b]">Telefone</p>
-                    <p className="text-sm text-[#0f172a]">{detalhe.telefone || '—'}</p>
+                    <p className="text-ink text-sm font-bold">Telefone</p>
+                    <p className="text-ink text-sm">{detalhe.telefone || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#1e293b]">E-mail</p>
-                    <p className="text-sm text-[#0f172a]">{detalhe.email || '—'}</p>
+                    <p className="text-ink text-sm font-bold">E-mail</p>
+                    <p className="text-ink text-sm">{detalhe.email || '—'}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#1e293b]">Endereço</p>
-                  <p className="text-sm text-[#0f172a]">{detalhe.endereco || '—'}</p>
+                  <p className="text-ink text-sm font-bold">Endereço</p>
+                  <p className="text-ink text-sm">{detalhe.endereco || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#1e293b]">Produtos fornecidos</p>
+                  <p className="text-ink text-sm font-bold">Produtos fornecidos</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {detalhe.produto.length ? (
                       detalhe.produto.map((produto) => (
                         <span
                           key={produto}
-                          className="rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800"
+                          className="bg-danger-soft text-danger rounded-full px-3 py-1 text-xs font-medium"
                         >
                           {produto}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-[#0f172a]">—</span>
+                      <span className="text-ink text-sm">—</span>
                     )}
                   </div>
                 </div>
               </div>
               {podeEditar ? (
-                <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+                <div className="border-line flex justify-end gap-3 border-t pt-4">
                   <button
                     type="button"
                     onClick={() => void handleExcluir(detalhe.id)}
-                    className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
+                    className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-5 py-2.5 text-base font-bold"
                   >
                     <Trash2 className="size-4" /> Excluir
                   </button>
@@ -307,7 +303,7 @@ export default function FornecedoresCRUD() {
                       setNovoProduto('');
                       setDetalhe(null);
                     }}
-                    className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base font-bold text-white"
+                    className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-5 py-2.5 text-base font-bold"
                   >
                     <Pencil className="size-4" /> Editar
                   </button>
@@ -319,15 +315,15 @@ export default function FornecedoresCRUD() {
       )}
       {editando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
-          <div className="flex w-full max-w-2xl flex-col rounded-xl bg-white">
+          <div className="bg-surface flex w-full max-w-2xl flex-col rounded-xl">
             <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
+              <h2 className="text-ink text-xl leading-7 font-bold">
                 {editando.id ? 'Editar Fornecedor' : 'Novo Fornecedor'}
               </h2>
               <button
                 type="button"
                 onClick={() => setEditando(null)}
-                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                className="bg-soft text-faint rounded-lg p-2"
                 aria-label="Fechar"
               >
                 <X className="size-5" />
@@ -335,9 +331,7 @@ export default function FornecedoresCRUD() {
             </div>
             <form onSubmit={handleSalvar} className="flex flex-col gap-5 p-6">
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                  Nome *
-                </label>
+                <label className="text-ink mb-1 block text-sm font-bold">Nome *</label>
                 <input
                   type="text"
                   required
@@ -345,13 +339,11 @@ export default function FornecedoresCRUD() {
                   onChange={(event) =>
                     setEditando({ ...editando, nome: event.target.value })
                   }
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                  Telefone
-                </label>
+                <label className="text-ink mb-1 block text-sm font-bold">Telefone</label>
                 <input
                   type="text"
                   value={editando.telefone}
@@ -361,15 +353,13 @@ export default function FornecedoresCRUD() {
                       telefone: formatarTelefone(event.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                   placeholder="(00) 00000-0000"
                   required={!editando.email}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                  E-mail
-                </label>
+                <label className="text-ink mb-1 block text-sm font-bold">E-mail</label>
                 <input
                   type="email"
                   required={!editando.telefone}
@@ -377,31 +367,29 @@ export default function FornecedoresCRUD() {
                   onChange={(event) =>
                     setEditando({ ...editando, email: event.target.value })
                   }
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                  Endereço
-                </label>
+                <label className="text-ink mb-1 block text-sm font-bold">Endereço</label>
                 <input
                   type="text"
                   value={editando.endereco}
                   onChange={(event) =>
                     setEditando({ ...editando, endereco: event.target.value })
                   }
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#1e293b]">
+                <label className="text-ink mb-1 block text-sm font-bold">
                   Produtos fornecidos
                 </label>
                 <div className="mb-2 flex flex-wrap gap-2">
                   {editando.produto.map((produto) => (
                     <span
                       key={produto}
-                      className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800"
+                      className="bg-danger-soft text-danger inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
                     >
                       {produto}
                       <button
@@ -412,7 +400,7 @@ export default function FornecedoresCRUD() {
                             produto: editando.produto.filter((item) => item !== produto),
                           })
                         }
-                        className="text-orange-700"
+                        className="text-accent"
                         aria-label={`Remover ${produto}`}
                       >
                         <X className="size-3" />
@@ -436,22 +424,22 @@ export default function FornecedoresCRUD() {
                       setNovoProduto('');
                     }
                   }}
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
                   placeholder="Digite um produto e pressione Enter"
                 />
               </div>
-              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+              <div className="border-line flex justify-end gap-3 border-t pt-4">
                 <button
                   type="button"
                   onClick={() => setEditando(null)}
-                  className="rounded-lg px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100"
+                  className="text-muted hover:bg-soft rounded-lg px-5 py-2.5 font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 font-bold text-white disabled:opacity-60"
+                  className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-5 py-2.5 font-bold disabled:opacity-60"
                 >
                   <Save className="size-4" />
                   {salvando ? 'Salvando...' : 'Salvar Fornecedor'}

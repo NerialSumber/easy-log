@@ -40,8 +40,6 @@ export async function resolveClienteId(
   return criado.id;
 }
 
-const STATUS_PROJETO = ['ABERTO', 'EM_ANDAMENTO', 'CONCLUIDO', 'ATRASADO'] as const;
-
 function parseDataCampo(value: unknown): Date | null {
   if (typeof value !== 'string' || !value.trim()) {
     return null;
@@ -75,23 +73,31 @@ export function parsePeriodoProjeto(dataInicio: unknown, dataFim: unknown) {
   return { ok: true as const, dataInicio: inicio, dataFim: fim };
 }
 
-export function parseStatusProjeto(value: unknown) {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  return STATUS_PROJETO.includes(value as (typeof STATUS_PROJETO)[number])
-    ? (value as (typeof STATUS_PROJETO)[number])
-    : null;
-}
-
-export function prismaErrorMessage(error: unknown, fallback: string) {
-  if (
+export function codigoDuplicado(error: unknown) {
+  return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
     (error as { code?: string }).code === 'P2002'
-  ) {
+  );
+}
+
+export async function gerarCodigoProjeto() {
+  const projetos = await prisma.projeto.findMany({ select: { codigo: true } });
+  let maior = 0;
+
+  for (const projeto of projetos) {
+    const encontrado = /^PRJ-(\d+)$/i.exec(projeto.codigo.trim());
+    if (!encontrado) continue;
+    const numero = Number(encontrado[1]);
+    if (Number.isInteger(numero) && numero > maior) maior = numero;
+  }
+
+  return `PRJ-${String(maior + 1).padStart(3, '0')}`;
+}
+
+export function prismaErrorMessage(error: unknown, fallback: string) {
+  if (codigoDuplicado(error)) {
     return 'Já existe um projeto com este código.';
   }
 

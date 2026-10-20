@@ -27,16 +27,14 @@ export function AppSidebar({ active }: { active: NavKey }) {
   const userData = useCurrentUser();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col self-stretch bg-white md:flex">
-      <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-5">
-        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ea580c] text-xl font-bold text-white">
+    <aside className="border-line bg-surface hidden w-64 shrink-0 flex-col self-stretch border-r md:flex">
+      <div className="border-line flex items-center gap-3 border-b px-5 py-5">
+        <div className="bg-ink text-canvas flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-medium">
           {userData.iniciais}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm leading-[18px] font-medium text-slate-800">
-            {userData.nome}
-          </span>
-          <span className="text-xs leading-4 text-[#94a3b8]">{userData.roleLabel}</span>
+          <span className="text-ink truncate text-sm font-medium">{userData.nome}</span>
+          <span className="text-faint text-xs">{userData.roleLabel}</span>
         </div>
         <UserSettings />
       </div>
@@ -52,12 +50,12 @@ export function AppSidebar({ active }: { active: NavKey }) {
               href={item.href}
               className={
                 isActive
-                  ? 'flex items-center gap-2.5 rounded-lg border-l-4 border-[#ea580c] bg-[#1e293b] py-8 pr-4 pl-3 text-lg leading-6 font-medium text-white'
-                  : 'flex items-center gap-2.5 rounded-lg px-4 py-8 text-lg leading-6 text-[#94a3b8] transition-colors hover:bg-slate-50'
+                  ? 'border-accent text-ink flex items-center gap-2.5 border-l-4 py-8 pr-4 pl-3 text-lg leading-6 font-medium'
+                  : 'text-muted hover:text-ink flex items-center gap-2.5 px-4 py-8 text-lg leading-6 transition-colors'
               }
             >
               <Icon
-                className={`size-5 shrink-0 ${isActive ? 'text-[#ea580c]' : 'text-[#94a3b8]'}`}
+                className={`size-5 shrink-0 ${isActive ? 'text-accent' : 'text-faint'}`}
               />
               {item.label}
             </Link>

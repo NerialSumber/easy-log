@@ -9,10 +9,10 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-[#e2e8f0] bg-white px-8 py-5">
+    <header className="border-line bg-surface flex items-center justify-between border-b px-8 py-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl leading-8 font-bold text-[#1e293b]">{title}</h1>
-        {subtitle ? <p className="text-sm leading-5 text-[#64748b]">{subtitle}</p> : null}
+        <h1 className="text-ink text-2xl font-medium tracking-tight">{title}</h1>
+        {subtitle ? <p className="text-muted text-sm">{subtitle}</p> : null}
       </div>
       <div className="flex items-center gap-3">
         {action}

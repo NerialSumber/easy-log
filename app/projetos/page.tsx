@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Filter, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { Check, Filter, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { ClienteField } from '@/components/cliente-field';
 import { PageHeader } from '@/components/page-header';
@@ -12,6 +12,7 @@ import {
   classesStatusModal,
   classesStatusTabela,
   rotuloStatus,
+  statusVisivel,
 } from '@/lib/status-projeto';
 import type { ClienteResumo, ProjetoLista, StatusProjeto } from '@/lib/types';
 
@@ -76,11 +77,64 @@ function projetoNoDia(projeto: ProjetoLista, dia: string) {
   return dia === inicio || dia === fim;
 }
 
-function filtrarProjetos(
-  projetos: ProjetoLista[],
-  busca: string,
-  filtro: CampoFiltro,
-) {
+type ProjetoFrequente = {
+  nome: string;
+  quantidade: number;
+  qtdeMadeira: number;
+  clienteId: string;
+};
+
+function projetosMaisFeitos(projetos: ProjetoLista[], limite = 8): ProjetoFrequente[] {
+  const contagem = new Map<string, ProjetoFrequente & { atualizadoEm: number }>();
+
+  for (const projeto of projetos) {
+    const nome = projeto.nome.trim();
+    const chave = nome.toLowerCase();
+    if (!chave) {
+      continue;
+    }
+
+    const quando = new Date(projeto.criadoEm).getTime() || 0;
+    const caracteristicas = {
+      nome,
+      qtdeMadeira: projeto.qtdeMadeira ?? 0,
+      clienteId: projeto.cliente?.id ?? projeto.clienteId ?? '',
+    };
+    const atual = contagem.get(chave);
+    if (!atual) {
+      contagem.set(chave, { ...caracteristicas, quantidade: 1, atualizadoEm: quando });
+      continue;
+    }
+
+    atual.quantidade += 1;
+    if (quando >= atual.atualizadoEm) {
+      Object.assign(atual, caracteristicas, { atualizadoEm: quando });
+    }
+  }
+
+  return [...contagem.values()]
+    .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .slice(0, limite)
+    .map((item) => ({
+      nome: item.nome,
+      quantidade: item.quantidade,
+      qtdeMadeira: item.qtdeMadeira,
+      clienteId: item.clienteId,
+    }));
+}
+
+function hrefNovoApartir(item: ProjetoFrequente) {
+  const params = new URLSearchParams({
+    nome: item.nome,
+    madeira: String(item.qtdeMadeira),
+  });
+  if (item.clienteId) {
+    params.set('cliente', item.clienteId);
+  }
+  return `/projetos/novo?${params.toString()}`;
+}
+
+function filtrarProjetos(projetos: ProjetoLista[], busca: string, filtro: CampoFiltro) {
   const termoBruto = busca.trim();
   const termo = termoBruto.toLowerCase();
   if (!termo) {
@@ -154,6 +208,7 @@ export default function ProjetosCRUD() {
   const [projetoDetalhe, setProjetoDetalhe] = useState<ProjetoLista | null>(null);
   const [projetoEditando, setProjetoEditando] = useState<ProjetoEdicao | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [concluindo, setConcluindo] = useState(false);
 
   const fetchProjetos = useCallback(async () => {
     try {
@@ -218,6 +273,8 @@ export default function ProjetosCRUD() {
     };
   }, []);
 
+  const maisFeitos = useMemo(() => projetosMaisFeitos(projetos), [projetos]);
+
   const projetosFiltrados = useMemo(
     () => filtrarProjetos(projetos, busca, filtro),
     [projetos, busca, filtro],
@@ -244,6 +301,31 @@ export default function ProjetosCRUD() {
     }
   };
 
+  const handleConcluir = async (id: string) => {
+    setConcluindo(true);
+    try {
+      const res = await fetch(`/api/projetos/${id}`, { method: 'PATCH' });
+      if (!res.ok) {
+        const errorData = (await res.json()) as { error?: string };
+        alert(errorData.error || 'Não foi possível concluir o projeto.');
+        return;
+      }
+
+      setProjetos((atual) =>
+        atual.map((projeto) =>
+          projeto.id === id ? { ...projeto, status: 'CONCLUIDO' } : projeto,
+        ),
+      );
+      setProjetoDetalhe((atual) =>
+        atual && atual.id === id ? { ...atual, status: 'CONCLUIDO' } : atual,
+      );
+    } catch {
+      alert('Erro de conexão ao concluir o projeto.');
+    } finally {
+      setConcluindo(false);
+    }
+  };
+
   const handleSalvarEdicao = async (e: FormEvent) => {
     e.preventDefault();
     if (!projetoEditando) {
@@ -256,10 +338,8 @@ export default function ProjetosCRUD() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          codigo: projetoEditando.codigo,
           nome: projetoEditando.nome,
           qtdeMadeira: projetoEditando.qtdeMadeira,
-          status: projetoEditando.status,
           dataInicio: projetoEditando.dataInicio,
           dataFim: projetoEditando.dataFim,
           clienteId:
@@ -290,89 +370,170 @@ export default function ProjetosCRUD() {
   return (
     <AppShell
       active="projetos"
+      canvas
       header={
         <PageHeader
-          title="Gerenciamento de Projetos"
-          subtitle="Liste, busque, crie, edite e exclua os projetos em andamento."
+          title="Projetos"
+          subtitle="Busque, filtre e acompanhe o que está em produção."
           action={
             <Link
               href="/projetos/novo"
-              className="flex items-center justify-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-base leading-6 font-medium text-white"
+              className="bg-accent-fill text-on-accent flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
             >
-              <Plus className="size-5" /> Novo Projeto
+              <Plus className="size-4" /> Novo projeto
             </Link>
           }
         />
       }
     >
-      <div className="flex flex-col gap-6">
-        <form
-          role="search"
-          onSubmit={(event) => event.preventDefault()}
-          className="flex w-full flex-col gap-3 sm:flex-row sm:items-center"
-        >
-          <div className="flex w-full max-w-[448px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
-            <Search className="size-5 shrink-0 text-[#94a3b8]" />
-            {filtro === 'status' ? (
+      <div className="flex flex-col gap-5">
+        <section className="border-line bg-surface rounded-md border p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-ink text-base font-semibold">Projetos mais feitos</h2>
+              <p className="text-muted mt-1 text-sm leading-5">
+                Toque em um nome para criar outro projeto igual, com datas novas.
+              </p>
+            </div>
+          </div>
+
+          {carregando ? (
+            <div className="mt-5 flex flex-col gap-2">
+              {Array.from({ length: 3 }, (_, indice) => (
+                <div key={indice} className="bg-soft h-14 animate-pulse rounded-xl" />
+              ))}
+            </div>
+          ) : maisFeitos.length === 0 ? (
+            <p className="bg-soft text-muted mt-5 rounded-xl px-4 py-8 text-center text-sm">
+              Nenhum projeto cadastrado para montar a lista.
+            </p>
+          ) : (
+            <div className="mt-5 flex flex-col gap-2" role="list">
+              {maisFeitos.map((item, indice) => {
+                const lider = indice === 0;
+                const maior = maisFeitos[0]?.quantidade ?? 1;
+                const largura = Math.max((item.quantidade / maior) * 100, 8);
+
+                return (
+                  <Link
+                    key={item.nome.toLowerCase()}
+                    href={hrefNovoApartir(item)}
+                    role="listitem"
+                    className={`relative overflow-hidden rounded-xl border text-left ${
+                      lider
+                        ? 'border-line hover:border-accent'
+                        : 'border-line hover:border-line'
+                    }`}
+                  >
+                    <span
+                      className={`absolute inset-y-0 left-0 ${lider ? 'bg-soft' : 'bg-soft'}`}
+                      style={{ width: `${largura}%` }}
+                    />
+                    <span className="relative flex items-center gap-4 px-4 py-3.5">
+                      <span
+                        className={`w-4 text-sm tabular-nums ${
+                          lider ? 'text-accent font-semibold' : 'text-faint'
+                        }`}
+                      >
+                        {indice + 1}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate ${
+                          lider
+                            ? 'text-ink text-base font-semibold'
+                            : 'text-ink text-sm font-medium'
+                        }`}
+                      >
+                        {item.nome}
+                      </span>
+                      <span className="text-muted shrink-0 text-sm tabular-nums">
+                        <span className="text-ink font-semibold">{item.quantidade}</span>
+                        <span className="ml-1 text-xs">
+                          {item.quantidade === 1 ? 'vez' : 'vezes'}
+                        </span>
+                      </span>
+                      <Plus className="text-accent size-4 shrink-0" />
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="border-line bg-surface overflow-hidden rounded-md border">
+          <form
+            role="search"
+            onSubmit={(event) => event.preventDefault()}
+            className="border-line flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center"
+          >
+            <div className="bg-soft flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5">
+              <Search className="text-faint size-4 shrink-0" />
+              {filtro === 'status' ? (
+                <select
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="text-ink w-full bg-transparent text-sm outline-none"
+                  aria-label="Filtrar por status"
+                >
+                  <option value="">Todos os status</option>
+                  {STATUS_FILTRO.map((status) => (
+                    <option key={status} value={status}>
+                      {rotuloStatus(status)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={filtro === 'data' ? 'date' : 'search'}
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="text-ink placeholder:text-faint w-full bg-transparent text-sm outline-none"
+                  placeholder={placeholderBusca(filtro)}
+                  aria-label={placeholderBusca(filtro)}
+                />
+              )}
+            </div>
+
+            <div className="bg-soft flex w-full items-center gap-2 rounded-xl px-3 py-2.5 sm:w-52">
+              <Filter className="text-faint size-4 shrink-0" />
               <select
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none"
-                aria-label="Filtrar por status"
+                value={filtro}
+                onChange={(e) => {
+                  setFiltro(e.target.value as CampoFiltro);
+                  setBusca('');
+                }}
+                className="text-ink w-full bg-transparent text-sm outline-none"
+                aria-label="Filtrar por"
               >
-                <option value="">Todos os status</option>
-                {STATUS_FILTRO.map((status) => (
-                  <option key={status} value={status}>
-                    {rotuloStatus(status)}
-                  </option>
-                ))}
+                <option value="todos">Todos os campos</option>
+                <option value="nome">Nome</option>
+                <option value="data">Data</option>
+                <option value="cliente">Cliente</option>
+                <option value="status">Status</option>
               </select>
-            ) : (
-              <input
-                type={filtro === 'data' ? 'date' : 'search'}
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
-                placeholder={placeholderBusca(filtro)}
-                aria-label={placeholderBusca(filtro)}
-              />
-            )}
-          </div>
+            </div>
 
-          <div className="flex w-full max-w-[220px] items-center gap-2 rounded-lg border border-[#cbd5e1] px-3 py-2">
-            <Filter className="size-5 shrink-0 text-[#94a3b8]" />
-            <select
-              value={filtro}
-              onChange={(e) => {
-                setFiltro(e.target.value as CampoFiltro);
-                setBusca('');
-              }}
-              className="w-full bg-transparent text-sm leading-5 text-[#0f172a] outline-none"
-              aria-label="Filtrar por"
-            >
-              <option value="todos">Todos os campos</option>
-              <option value="nome">Nome</option>
-              <option value="data">Data</option>
-              <option value="cliente">Cliente</option>
-              <option value="status">Status</option>
-            </select>
-          </div>
-        </form>
+            <p className="text-faint text-sm sm:ml-auto">
+              {carregando
+                ? 'Carregando'
+                : `${projetosFiltrados.length} ${projetosFiltrados.length === 1 ? 'projeto' : 'projetos'}`}
+            </p>
+          </form>
 
-        <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
           <table className="min-w-full">
-            <thead className="bg-[#f8fafc]">
-              <tr className="border-b border-[#e2e8f0]">
-                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
-                  Nome
+            <thead>
+              <tr className="border-line border-b">
+                <th className="text-faint px-6 py-3 text-left text-xs font-medium">
+                  Projeto
                 </th>
-                <th className="w-[240px] px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
-                  Data
+                <th className="text-faint w-[240px] px-6 py-3 text-left text-xs font-medium">
+                  Período
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                <th className="text-faint px-6 py-3 text-left text-xs font-medium">
                   Cliente
                 </th>
-                <th className="w-[200px] px-6 py-3 text-right text-xs font-bold tracking-[0.72px] text-[#64748b] uppercase">
+                <th className="text-faint w-[160px] px-6 py-3 text-right text-xs font-medium">
                   Status
                 </th>
               </tr>
@@ -380,13 +541,13 @@ export default function ProjetosCRUD() {
             <tbody>
               {carregando ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-[#64748b]">
+                  <td colSpan={4} className="text-muted px-6 py-12 text-center text-sm">
                     Carregando projetos...
                   </td>
                 </tr>
               ) : projetosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-[#64748b]">
+                  <td colSpan={4} className="text-muted px-6 py-12 text-center text-sm">
                     {temFiltroAtivo
                       ? 'Nenhum projeto encontrado para esta busca.'
                       : 'Nenhum projeto cadastrado.'}
@@ -396,21 +557,22 @@ export default function ProjetosCRUD() {
                 projetosFiltrados.map((projeto) => (
                   <tr
                     key={projeto.id}
-                    className="cursor-pointer border-b border-[#e2e8f0] last:border-b-0 hover:bg-slate-50"
+                    className="border-line hover:bg-soft cursor-pointer border-b last:border-b-0"
                     onClick={() => setProjetoDetalhe(projeto)}
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-[#0f172a]">
-                      {projeto.nome}
+                    <td className="px-6 py-4">
+                      <p className="text-ink text-sm font-medium">{projeto.nome}</p>
+                      <p className="text-faint mt-0.5 text-xs">{projeto.codigo}</p>
                     </td>
-                    <td className="w-[240px] px-6 py-4 text-sm whitespace-nowrap text-[#64748b]">
+                    <td className="text-muted w-[240px] px-6 py-4 text-sm whitespace-nowrap">
                       {formatarPeriodo(projeto.dataInicio, projeto.dataFim)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#334155]">
+                    <td className="text-ink px-6 py-4 text-sm">
                       {projeto.cliente?.nome ?? '—'}
                     </td>
-                    <td className="w-[200px] px-6 py-4">
+                    <td className="w-[160px] px-6 py-4 text-right">
                       <span
-                        className={`flex w-full items-center justify-center rounded-xl px-3 py-1 text-xs font-medium ${classesStatusTabela(projeto.status)}`}
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${classesStatusTabela(projeto.status)}`}
                       >
                         {rotuloStatus(projeto.status)}
                       </span>
@@ -420,20 +582,18 @@ export default function ProjetosCRUD() {
               )}
             </tbody>
           </table>
-        </div>
+        </section>
       </div>
 
       {projetoDetalhe && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
-          <div className="flex w-full max-w-[672px] flex-col overflow-hidden rounded-xl bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
-                Detalhes do Projeto
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="bg-surface border-line flex w-full max-w-[672px] flex-col overflow-hidden rounded-md border">
+            <div className="border-line flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-ink text-lg font-semibold">Detalhes do projeto</h2>
               <button
                 type="button"
                 onClick={() => setProjetoDetalhe(null)}
-                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                className="bg-soft text-faint rounded-lg p-2"
                 aria-label="Fechar"
               >
                 <X className="size-5" />
@@ -443,13 +603,13 @@ export default function ProjetosCRUD() {
             <div className="flex flex-col gap-5 p-6">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Código</p>
-                  <p className="text-sm text-[#0f172a]">{projetoDetalhe.codigo}</p>
+                  <p className="text-faint text-xs font-medium">Código</p>
+                  <p className="text-ink text-sm">{projetoDetalhe.codigo}</p>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Status</p>
+                  <p className="text-faint text-xs font-medium">Status</p>
                   <span
-                    className={`inline-flex w-fit rounded-lg px-2.5 py-1 text-sm font-medium ${classesStatusModal(projetoDetalhe.status)}`}
+                    className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium ${classesStatusModal(projetoDetalhe.status)}`}
                   >
                     {rotuloStatus(projetoDetalhe.status)}
                   </span>
@@ -457,55 +617,66 @@ export default function ProjetosCRUD() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <p className="text-sm font-bold text-[#1e293b]">Nome do Projeto</p>
-                <p className="text-sm text-[#0f172a]">{projetoDetalhe.nome}</p>
+                <p className="text-faint text-xs font-medium">Nome do projeto</p>
+                <p className="text-ink text-sm">{projetoDetalhe.nome}</p>
               </div>
 
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Cliente</p>
-                  <p className="text-sm text-[#0f172a]">
+                  <p className="text-faint text-xs font-medium">Cliente</p>
+                  <p className="text-ink text-sm">
                     {projetoDetalhe.cliente?.nome ?? '—'}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Qtd. de Madeira (m²)</p>
-                  <p className="text-sm text-[#0f172a]">
-                    {formatarMadeira(projetoDetalhe.qtdeMadeira)}
+                  <p className="text-faint text-xs font-medium">Madeira</p>
+                  <p className="text-ink text-sm">
+                    {formatarMadeira(projetoDetalhe.qtdeMadeira)} m²
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Data início</p>
-                  <p className="text-sm text-[#0f172a]">
+                  <p className="text-faint text-xs font-medium">Início</p>
+                  <p className="text-ink text-sm">
                     {formatarData(projetoDetalhe.dataInicio)}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-bold text-[#1e293b]">Data fim</p>
-                  <p className="text-sm text-[#0f172a]">
+                  <p className="text-faint text-xs font-medium">Fim</p>
+                  <p className="text-ink text-sm">
                     {formatarData(projetoDetalhe.dataFim)}
                   </p>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+              <div className="border-line flex justify-end gap-3 border-t pt-4">
                 <button
                   type="button"
                   onClick={() => void handleExcluir(projetoDetalhe.id)}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base leading-6 font-bold text-white"
+                  className="border-danger text-danger hover:bg-danger-soft flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold"
                 >
                   <Trash2 className="size-4" /> Excluir
                 </button>
+                {projetoDetalhe.status !== 'CONCLUIDO' ? (
+                  <button
+                    type="button"
+                    disabled={concluindo}
+                    onClick={() => void handleConcluir(projetoDetalhe.id)}
+                    className="bg-ink text-canvas flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
+                  >
+                    <Check className="size-4" />
+                    {concluindo ? 'Concluindo...' : 'Concluir'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
                     setProjetoEditando(toEdicao(projetoDetalhe));
                     setProjetoDetalhe(null);
                   }}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 text-base leading-6 font-bold text-white"
+                  className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
                 >
                   <Pencil className="size-4" /> Editar
                 </button>
@@ -516,60 +687,41 @@ export default function ProjetosCRUD() {
       )}
 
       {projetoEditando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
-          <div className="flex w-full max-w-2xl flex-col rounded-xl bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-xl leading-7 font-bold text-[#1e293b]">
-                Editar Projeto
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="bg-surface border-line flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-md border">
+            <div className="border-line flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-ink text-lg font-semibold">Editar projeto</h2>
               <button
                 type="button"
                 onClick={() => setProjetoEditando(null)}
-                className="rounded-lg bg-[#f1f5f9] p-2 text-slate-400"
+                className="bg-soft text-faint rounded-lg p-2"
                 aria-label="Fechar"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSalvarEdicao} className="space-y-5 p-6">
+            <form onSubmit={handleSalvarEdicao} className="space-y-5 overflow-auto p-6">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                    Código
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={projetoEditando.codigo}
-                    onChange={(e) =>
-                      setProjetoEditando({
-                        ...projetoEditando,
-                        codigo: e.target.value.toUpperCase(),
-                      })
-                    }
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
-                  />
+                  <p className="text-ink mb-1.5 text-sm font-medium">Código</p>
+                  <p className="bg-soft text-ink rounded-xl px-4 py-3 text-sm">
+                    {projetoEditando.codigo}
+                  </p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
-                    Status
-                  </label>
-                  <select
-                    value={projetoEditando.status}
-                    onChange={(e) =>
-                      setProjetoEditando({
-                        ...projetoEditando,
-                        status: e.target.value as StatusProjeto,
-                      })
-                    }
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                  <p className="text-ink mb-1.5 text-sm font-medium">Status</p>
+                  <p
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${classesStatusModal(statusVisivel(projetoEditando.status, projetoEditando.dataInicio, projetoEditando.dataFim))}`}
                   >
-                    <option value="ABERTO">Aberto</option>
-                    <option value="EM_ANDAMENTO">Em Andamento</option>
-                    <option value="CONCLUIDO">Concluído</option>
-                    <option value="ATRASADO">Atrasado</option>
-                  </select>
+                    {rotuloStatus(
+                      statusVisivel(
+                        projetoEditando.status,
+                        projetoEditando.dataInicio,
+                        projetoEditando.dataFim,
+                      ),
+                    )}
+                  </p>
                 </div>
                 <div className="md:col-span-2">
                   <PeriodoField
@@ -584,7 +736,7 @@ export default function ProjetosCRUD() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
+                  <label className="text-ink mb-1.5 block text-sm font-medium">
                     Nome do Projeto
                   </label>
                   <input
@@ -594,7 +746,7 @@ export default function ProjetosCRUD() {
                     onChange={(e) =>
                       setProjetoEditando({ ...projetoEditando, nome: e.target.value })
                     }
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                    className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -615,7 +767,7 @@ export default function ProjetosCRUD() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-bold text-[#1e293b]">
+                  <label className="text-ink mb-1.5 block text-sm font-medium">
                     Qtd. de Madeira (m²)
                   </label>
                   <input
@@ -629,23 +781,23 @@ export default function ProjetosCRUD() {
                         qtdeMadeira: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#ea580c]"
+                    className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-[#f1f5f9] pt-4">
+              <div className="border-line flex justify-end gap-3 border-t pt-4">
                 <button
                   type="button"
                   onClick={() => setProjetoEditando(null)}
-                  className="rounded-lg px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100"
+                  className="text-muted hover:bg-soft rounded-xl px-4 py-2.5 text-sm font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="flex items-center gap-2 rounded-lg bg-[#ea580c] px-5 py-2.5 font-bold text-white disabled:opacity-60"
+                  className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
                 >
                   <Save className="size-4" />{' '}
                   {salvando ? 'Salvando...' : 'Salvar Alterações'}
