@@ -84,7 +84,7 @@ type ProjetoFrequente = {
   clienteId: string;
 };
 
-function projetosMaisFeitos(projetos: ProjetoLista[], limite = 8): ProjetoFrequente[] {
+function projetosMaisFeitos(projetos: ProjetoLista[]): ProjetoFrequente[] {
   const contagem = new Map<string, ProjetoFrequente & { atualizadoEm: number }>();
 
   for (const projeto of projetos) {
@@ -114,7 +114,6 @@ function projetosMaisFeitos(projetos: ProjetoLista[], limite = 8): ProjetoFreque
 
   return [...contagem.values()]
     .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, 'pt-BR'))
-    .slice(0, limite)
     .map((item) => ({
       nome: item.nome,
       quantidade: item.quantidade,
@@ -202,7 +201,9 @@ function placeholderBusca(filtro: CampoFiltro) {
 export default function ProjetosCRUD() {
   const [projetos, setProjetos] = useState<ProjetoLista[]>([]);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [aba, setAba] = useState<'pedidos' | 'catalogo'>('pedidos');
   const [busca, setBusca] = useState('');
+  const [buscaCatalogo, setBuscaCatalogo] = useState('');
   const [filtro, setFiltro] = useState<CampoFiltro>('todos');
   const [carregando, setCarregando] = useState(true);
   const [projetoDetalhe, setProjetoDetalhe] = useState<ProjetoLista | null>(null);
@@ -273,7 +274,15 @@ export default function ProjetosCRUD() {
     };
   }, []);
 
-  const maisFeitos = useMemo(() => projetosMaisFeitos(projetos), [projetos]);
+  const catalogo = useMemo(() => projetosMaisFeitos(projetos), [projetos]);
+  const catalogoFiltrado = useMemo(() => {
+    const termo = buscaCatalogo.trim().toLowerCase();
+    if (!termo) {
+      return catalogo;
+    }
+
+    return catalogo.filter((item) => item.nome.toLowerCase().includes(termo));
+  }, [buscaCatalogo, catalogo]);
 
   const projetosFiltrados = useMemo(
     () => filtrarProjetos(projetos, busca, filtro),
@@ -374,27 +383,92 @@ export default function ProjetosCRUD() {
       header={
         <PageHeader
           title="Projetos"
-          subtitle="Busque, filtre e acompanhe o que está em produção."
+          subtitle={
+            aba === 'pedidos'
+              ? 'Busque, filtre e acompanhe os pedidos em produção.'
+              : 'Escolha um modelo do catálogo para iniciar um projeto.'
+          }
           action={
-            <Link
-              href="/projetos/novo"
-              className="bg-accent-fill text-on-accent flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
-            >
-              <Plus className="size-4" /> Novo projeto
-            </Link>
+            aba === 'catalogo' ? (
+              <Link
+                href="/projetos/novo"
+                className="bg-accent-fill text-on-accent flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+              >
+                <Plus className="size-4" /> Iniciar projeto
+              </Link>
+            ) : null
           }
         />
       }
     >
       <div className="flex flex-col gap-5">
+        <div
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+          role="tablist"
+          aria-label="Projetos e catálogo"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={aba === 'pedidos'}
+            onClick={() => setAba('pedidos')}
+            className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
+              aba === 'pedidos'
+                ? 'border-accent bg-soft'
+                : 'border-line bg-surface hover:border-accent'
+            }`}
+          >
+            <span
+              className={`text-base font-bold ${aba === 'pedidos' ? 'text-accent' : 'text-ink'}`}
+            >
+              Pedidos
+            </span>
+            <span className="text-muted text-xs">
+              Projetos em produção, com cliente, período e status.
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={aba === 'catalogo'}
+            onClick={() => setAba('catalogo')}
+            className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
+              aba === 'catalogo'
+                ? 'border-accent bg-soft'
+                : 'border-line bg-surface hover:border-accent'
+            }`}
+          >
+            <span
+              className={`text-base font-bold ${aba === 'catalogo' ? 'text-accent' : 'text-ink'}`}
+            >
+              Catálogo
+            </span>
+            <span className="text-muted text-xs">
+              Inicie um projeto a partir dos modelos já feitos.
+            </span>
+          </button>
+        </div>
+
+        {aba === 'catalogo' ? (
         <section className="border-line bg-surface rounded-md border p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-ink text-base font-semibold">Projetos mais feitos</h2>
+              <h2 className="text-ink text-base font-semibold">Catálogo de projetos</h2>
               <p className="text-muted mt-1 text-sm leading-5">
-                Toque em um nome para criar outro projeto igual, com datas novas.
+                Toque em um nome para iniciar outro projeto igual, com datas novas.
               </p>
             </div>
+            <label className="border-line bg-soft flex w-full max-w-sm items-center gap-2 rounded-xl border px-3 py-2.5">
+              <Search className="text-faint size-4 shrink-0" />
+              <input
+                type="search"
+                value={buscaCatalogo}
+                onChange={(event) => setBuscaCatalogo(event.target.value)}
+                className="text-ink placeholder:text-faint w-full bg-transparent text-sm outline-none"
+                placeholder="Buscar no catálogo..."
+                aria-label="Buscar no catálogo"
+              />
+            </label>
           </div>
 
           {carregando ? (
@@ -403,15 +477,19 @@ export default function ProjetosCRUD() {
                 <div key={indice} className="bg-soft h-14 animate-pulse rounded-xl" />
               ))}
             </div>
-          ) : maisFeitos.length === 0 ? (
+          ) : catalogo.length === 0 ? (
             <p className="bg-soft text-muted mt-5 rounded-xl px-4 py-8 text-center text-sm">
-              Nenhum projeto cadastrado para montar a lista.
+              Nenhum projeto cadastrado para montar o catálogo.
+            </p>
+          ) : catalogoFiltrado.length === 0 ? (
+            <p className="bg-soft text-muted mt-5 rounded-xl px-4 py-8 text-center text-sm">
+              Nenhum modelo encontrado para esta busca.
             </p>
           ) : (
             <div className="mt-5 flex flex-col gap-2" role="list">
-              {maisFeitos.map((item, indice) => {
-                const lider = indice === 0;
-                const maior = maisFeitos[0]?.quantidade ?? 1;
+              {catalogoFiltrado.map((item, indice) => {
+                const lider = indice === 0 && !buscaCatalogo.trim();
+                const maior = catalogo[0]?.quantidade ?? 1;
                 const largura = Math.max((item.quantidade / maior) * 100, 8);
 
                 return (
@@ -460,7 +538,7 @@ export default function ProjetosCRUD() {
             </div>
           )}
         </section>
-
+        ) : (
         <section className="border-line bg-surface overflow-hidden rounded-md border">
           <form
             role="search"
@@ -583,6 +661,7 @@ export default function ProjetosCRUD() {
             </tbody>
           </table>
         </section>
+        )}
       </div>
 
       {projetoDetalhe && (
