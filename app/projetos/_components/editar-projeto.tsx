@@ -9,16 +9,18 @@ import {
   classeCampo,
 } from '@/components/campo';
 import { ClienteField, dadosDoCliente } from '@/components/cliente-field';
+import { MadeiraField } from '@/components/madeira-field';
 import { Modal, RodapeModal } from '@/components/modal';
 import { PeriodoField } from '@/components/periodo-field';
 import { mensagemDeErro, requisitar } from '@/lib/api';
 import { paraInputData } from '@/lib/formatos';
 import { classesStatus, rotuloStatus, statusVisivel } from '@/lib/status-projeto';
-import type { ClienteResumo, ProjetoLista } from '@/lib/types';
+import type { ClienteResumo, MadeiraOpcao, ProjetoLista } from '@/lib/types';
 
 type EditarProjetoProps = {
   projeto: ProjetoLista;
   clientes: ClienteResumo[];
+  madeiras: MadeiraOpcao[];
   onFechar: () => void;
   onSalvo: () => void;
 };
@@ -26,12 +28,14 @@ type EditarProjetoProps = {
 export function EditarProjeto({
   projeto,
   clientes,
+  madeiras,
   onFechar,
   onSalvo,
 }: EditarProjetoProps) {
   const [form, setForm] = useState({
     nome: projeto.nome,
     qtdeMadeira: String(projeto.qtdeMadeira ?? 0),
+    madeiraId: projeto.madeiraId ?? '',
     dataInicio: paraInputData(projeto.dataInicio),
     dataFim: paraInputData(projeto.dataFim),
     clienteId: projeto.clienteId ?? '',
@@ -51,6 +55,7 @@ export function EditarProjeto({
       await requisitar(`/api/projetos/${projeto.id}`, 'PUT', {
         nome: form.nome,
         qtdeMadeira: form.qtdeMadeira,
+        madeiraId: form.madeiraId,
         dataInicio: form.dataInicio,
         dataFim: form.dataFim,
         ...dadosDoCliente(form.clienteId, form.clienteNome),
@@ -109,16 +114,16 @@ export function EditarProjeto({
               onClienteNomeChange={(clienteNome) => alterar({ clienteNome })}
             />
           </div>
-          <Campo rotulo="Qtd. de madeira (m²)">
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={form.qtdeMadeira}
-              onChange={(e) => alterar({ qtdeMadeira: e.target.value })}
-              className={classeCampo}
+          <div className="md:col-span-2">
+            <MadeiraField
+              madeiras={madeiras}
+              madeiraId={form.madeiraId}
+              qtdeMadeira={form.qtdeMadeira}
+              bloqueado={projeto.status === 'CONCLUIDO'}
+              onMadeiraIdChange={(madeiraId) => alterar({ madeiraId })}
+              onQtdeMadeiraChange={(qtdeMadeira) => alterar({ qtdeMadeira })}
             />
-          </Campo>
+          </div>
         </div>
 
         <RodapeModal>

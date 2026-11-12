@@ -1,20 +1,39 @@
 import { NextResponse } from 'next/server';
 import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { lerMadeira, lerPeriodo, projetoInclude, resolverCliente } from '@/lib/projetos';
+import {
+  ErroProjeto,
+  concluirProjeto,
+  lerPeriodo,
+  lerQuantidadeMadeira,
+  projetoInclude,
+  resolverCliente,
+  validarMadeira,
+} from '@/lib/projetos';
 import { statusPorPeriodo } from '@/lib/status-projeto';
 
 export const dynamic = 'force-dynamic';
 
 type Context = { params: Promise<{ id: string }> };
 
+function respostaDeErro(error: unknown, mensagem: string) {
+  if (error instanceof ErroProjeto) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+  console.error(mensagem, error);
+  return NextResponse.json(
+    { error: 'Não foi possível concluir a ação.' },
+    { status: 500 },
+  );
+}
+
 export async function PUT(request: Request, { params }: Context) {
   try {
     const acesso = await exigirPermissao('projetos', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
-    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } =
-      await request.json();
+    const corpo = await request.json();
+    const { nome, clienteId, clienteNome, dataInicio, dataFim } = corpo;
 
     if (typeof nome !== 'string' || !nome.trim()) {
       return NextResponse.json(
@@ -36,17 +55,21 @@ export async function PUT(request: Request, { params }: Context) {
       return NextResponse.json({ error: 'Projeto não encontrado.' }, { status: 404 });
     }
 
+    const concluido = atual.status === 'CONCLUIDO';
+    const qtdeMadeira = lerQuantidadeMadeira(corpo.qtdeMadeira);
+    const madeira = concluido
+      ? {}
+      : { qtdeMadeira, madeiraId: await validarMadeira(corpo.madeiraId, qtdeMadeira) };
     const cliente = await resolverCliente(clienteId, clienteNome);
 
     const projeto = await prisma.projeto.update({
       where: { id },
       data: {
         nome: nome.trim(),
-        qtdeMadeira: lerMadeira(qtdeMadeira),
-        status:
-          atual.status === 'CONCLUIDO'
-            ? 'CONCLUIDO'
-            : statusPorPeriodo(periodo.dataInicio, periodo.dataFim),
+        ...madeira,
+        status: concluido
+          ? 'CONCLUIDO'
+          : statusPorPeriodo(periodo.dataInicio, periodo.dataFim),
         dataInicio: periodo.dataInicio,
         dataFim: periodo.dataFim,
         ...(cliente ? { clienteId: cliente } : {}),
@@ -56,8 +79,7 @@ export async function PUT(request: Request, { params }: Context) {
 
     return NextResponse.json(projeto);
   } catch (error) {
-    console.error('ERRO AO ATUALIZAR PROJETO:', error);
-    return NextResponse.json({ error: 'Erro ao atualizar o projeto.' }, { status: 500 });
+    return respostaDeErro(error, 'ERRO AO ATUALIZAR PROJETO:');
   }
 }
 
@@ -67,15 +89,9 @@ export async function PATCH(_request: Request, { params }: Context) {
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
 
-    const projeto = await prisma.projeto.update({
-      where: { id },
-      data: { status: 'CONCLUIDO' },
-      include: projetoInclude,
-    });
-    return NextResponse.json(projeto);
+    return NextResponse.json(await concluirProjeto(id));
   } catch (error) {
-    console.error('ERRO AO CONCLUIR PROJETO:', error);
-    return NextResponse.json({ error: 'Erro ao concluir o projeto.' }, { status: 500 });
+    return respostaDeErro(error, 'ERRO AO CONCLUIR PROJETO:');
   }
 }
 
@@ -88,7 +104,6 @@ export async function DELETE(_request: Request, { params }: Context) {
     await prisma.projeto.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('ERRO AO EXCLUIR PROJETO:', error);
-    return NextResponse.json({ error: 'Erro ao excluir o projeto.' }, { status: 500 });
+    return respostaDeErro(error, 'ERRO AO EXCLUIR PROJETO:');
   }
 }

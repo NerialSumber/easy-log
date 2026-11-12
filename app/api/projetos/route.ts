@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
+  ErroProjeto,
   codigoDuplicado,
   gerarCodigoProjeto,
-  lerMadeira,
   lerPeriodo,
+  lerQuantidadeMadeira,
   projetoInclude,
   resolverCliente,
+  validarMadeira,
 } from '@/lib/projetos';
 import { statusPorPeriodo, statusVisivel } from '@/lib/status-projeto';
 
@@ -39,8 +41,8 @@ export async function POST(request: Request) {
     const acesso = await exigirPermissao('projetos', 'escrever');
     if (!acesso.ok) return acesso.resposta;
 
-    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } =
-      await request.json();
+    const corpo = await request.json();
+    const { nome, clienteId, clienteNome, dataInicio, dataFim } = corpo;
 
     if (typeof nome !== 'string' || !nome.trim()) {
       return NextResponse.json(
@@ -62,9 +64,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const qtdeMadeira = lerQuantidadeMadeira(corpo.qtdeMadeira);
     const dados = {
       nome: nome.trim(),
-      qtdeMadeira: lerMadeira(qtdeMadeira),
+      qtdeMadeira,
+      madeiraId: await validarMadeira(corpo.madeiraId, qtdeMadeira),
       status: statusPorPeriodo(periodo.dataInicio, periodo.dataFim),
       usuarioId: acesso.usuario.id,
       clienteId: cliente,
@@ -84,6 +88,9 @@ export async function POST(request: Request) {
       }
     }
   } catch (error) {
+    if (error instanceof ErroProjeto) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('ERRO AO CRIAR PROJETO:', error);
     return NextResponse.json({ error: 'Erro ao salvar o projeto.' }, { status: 500 });
   }

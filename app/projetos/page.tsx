@@ -8,7 +8,7 @@ import { AppShell } from '@/components/app-shell';
 import { classeBotao } from '@/components/campo';
 import { PageHeader } from '@/components/page-header';
 import { buscarLista } from '@/lib/api';
-import type { ClienteResumo, ProjetoLista } from '@/lib/types';
+import type { ClienteResumo, MadeiraOpcao, ProjetoLista } from '@/lib/types';
 import { Catalogo } from './_components/catalogo';
 import { DetalheProjeto } from './_components/detalhe-projeto';
 import { EditarProjeto } from './_components/editar-projeto';
@@ -32,6 +32,7 @@ const ABAS: { id: Aba; titulo: string; descricao: string }[] = [
 export default function ProjetosPage() {
   const [projetos, setProjetos] = useState<ProjetoLista[]>([]);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [madeiras, setMadeiras] = useState<MadeiraOpcao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState<Aba>('pedidos');
   const [detalhe, setDetalhe] = useState<ProjetoLista | null>(null);
@@ -42,18 +43,21 @@ export default function ProjetosPage() {
     Promise.all([
       buscarLista<ProjetoLista>('/api/projetos'),
       buscarLista<ClienteResumo>('/api/clientes'),
-    ]).then(([listaProjetos, listaClientes]) => {
+      buscarLista<MadeiraOpcao>('/api/madeiras'),
+    ]).then(([listaProjetos, listaClientes, listaMadeiras]) => {
       setProjetos(listaProjetos);
       setClientes(listaClientes);
+      setMadeiras(listaMadeiras);
       setCarregando(false);
     });
   }, [versao]);
 
-  function substituir(projeto: ProjetoLista) {
+  function concluido(projeto: ProjetoLista) {
     setProjetos((lista) =>
       lista.map((item) => (item.id === projeto.id ? projeto : item)),
     );
     setDetalhe(projeto);
+    setVersao((atual) => atual + 1);
   }
 
   function remover(id: string) {
@@ -100,7 +104,7 @@ export default function ProjetosPage() {
             setEditando(detalhe);
             setDetalhe(null);
           }}
-          onConcluido={substituir}
+          onConcluido={concluido}
           onExcluido={remover}
         />
       )}
@@ -109,6 +113,7 @@ export default function ProjetosPage() {
         <EditarProjeto
           projeto={editando}
           clientes={clientes}
+          madeiras={madeiras}
           onFechar={() => setEditando(null)}
           onSalvo={() => {
             setEditando(null);

@@ -26,11 +26,19 @@ export type FornecedorLista = {
   produto: string[];
 };
 
+export type MadeiraOpcao = {
+  id: string;
+  nome: string;
+  quantidade: number;
+};
+
 export type ProjetoLista = {
   id: string;
   codigo: string;
   nome: string;
   qtdeMadeira: number;
+  madeiraId: string | null;
+  madeira: { id: string; nome: string } | null;
   status: StatusProjeto;
   criadoEm: string;
   dataInicio: string | null;

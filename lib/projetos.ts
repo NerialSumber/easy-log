@@ -1,8 +1,78 @@
+import { formatarNumero } from '@/lib/formatos';
 import { prisma } from '@/lib/prisma';
 
 export const projetoInclude = {
   cliente: { select: { id: true, nome: true } },
+  madeira: { select: { id: true, nome: true } },
 } as const;
+
+export class ErroProjeto extends Error {
+  status: number;
+
+  constructor(mensagem: string, status = 400) {
+    super(mensagem);
+    this.status = status;
+  }
+}
+
+export async function validarMadeira(madeiraId: unknown, qtdeMadeira: number) {
+  if (typeof madeiraId !== 'string' || !madeiraId) {
+    if (qtdeMadeira > 0)
+      throw new ErroProjeto('Selecione o tipo de madeira usado no projeto.');
+    return null;
+  }
+
+  const madeira = await prisma.itemEstoque.findFirst({
+    where: { id: madeiraId, categoria: 'MADEIRA' },
+  });
+  if (!madeira) throw new ErroProjeto('Tipo de madeira não encontrado no estoque.');
+  return madeira.id;
+}
+
+export async function concluirProjeto(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const projeto = await tx.projeto.findUnique({
+      where: { id },
+      include: { madeira: true },
+    });
+    if (!projeto) throw new ErroProjeto('Projeto não encontrado.', 404);
+    if (projeto.status === 'CONCLUIDO')
+      throw new ErroProjeto('Este projeto já foi concluído.');
+
+    if (projeto.qtdeMadeira > 0) {
+      const { madeira } = projeto;
+      if (!madeira) {
+        throw new ErroProjeto('Informe o tipo de madeira do projeto antes de concluir.');
+      }
+
+      const restante = Math.round((madeira.quantidade - projeto.qtdeMadeira) * 100) / 100;
+      if (restante < 0) {
+        throw new ErroProjeto(
+          `Não há ${madeira.nome} suficiente no estoque: há ${formatarNumero(madeira.quantidade)} m² e o projeto usa ${formatarNumero(projeto.qtdeMadeira)} m².`,
+        );
+      }
+
+      const baixa = await tx.itemEstoque.updateMany({
+        where: { id: madeira.id, quantidade: madeira.quantidade },
+        data: { quantidade: restante },
+      });
+      if (baixa.count === 0) {
+        throw new ErroProjeto(
+          'O estoque de madeira mudou agora. Tente concluir de novo.',
+          409,
+        );
+      }
+    }
+
+    const marcado = await tx.projeto.updateMany({
+      where: { id, NOT: { status: 'CONCLUIDO' } },
+      data: { status: 'CONCLUIDO' },
+    });
+    if (marcado.count === 0) throw new ErroProjeto('Este projeto já foi concluído.');
+
+    return tx.projeto.findUniqueOrThrow({ where: { id }, include: projetoInclude });
+  });
+}
 
 export async function resolverCliente(clienteId: unknown, clienteNome: unknown) {
   if (typeof clienteId === 'string' && clienteId.trim() && clienteId !== '__new__') {
@@ -45,7 +115,7 @@ export function lerPeriodo(dataInicio: unknown, dataFim: unknown) {
   return { ok: true as const, dataInicio: inicio, dataFim: fim };
 }
 
-export function lerMadeira(valor: unknown) {
+export function lerQuantidadeMadeira(valor: unknown) {
   const numero = Number(valor);
   return Number.isFinite(numero) && numero > 0 ? numero : 0;
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { BarraProgresso } from '@/components/barra-progresso';
 
 type CartaoProps = {
   titulo: string;
@@ -7,13 +8,21 @@ type CartaoProps = {
   detalhe?: string;
   href: string;
   destaque?: boolean;
+  progresso?: number;
 };
 
-export function Cartao({ titulo, valor, detalhe, href, destaque = false }: CartaoProps) {
+export function Cartao({
+  titulo,
+  valor,
+  detalhe,
+  href,
+  destaque = false,
+  progresso,
+}: CartaoProps) {
   return (
     <Link
       href={href}
-      className="border-line bg-surface flex h-full flex-col border px-5 py-5"
+      className="border-line bg-surface hover:border-accent flex h-full flex-col border px-5 py-5 transition-colors"
     >
       <p className="text-muted text-sm">{titulo}</p>
       <p
@@ -21,6 +30,9 @@ export function Cartao({ titulo, valor, detalhe, href, destaque = false }: Carta
       >
         {valor}
       </p>
+      {progresso !== undefined ? (
+        <BarraProgresso percentual={progresso} alerta={destaque} className="mt-3" />
+      ) : null}
       {detalhe ? <p className="text-faint mt-2 text-sm leading-5">{detalhe}</p> : null}
     </Link>
   );

@@ -9,6 +9,7 @@ type Modelo = {
   nome: string;
   vezes: number;
   qtdeMadeira: number;
+  madeiraId: string;
   clienteId: string;
 };
 
@@ -28,6 +29,7 @@ function modelosMaisFeitos(projetos: ProjetoLista[]) {
         nome,
         vezes: 1,
         qtdeMadeira: projeto.qtdeMadeira ?? 0,
+        madeiraId: projeto.madeiraId ?? '',
         clienteId: projeto.clienteId ?? '',
       });
     }
@@ -44,6 +46,7 @@ function linkNovoProjeto(modelo: Modelo) {
     madeira: String(modelo.qtdeMadeira),
   });
   if (modelo.clienteId) params.set('cliente', modelo.clienteId);
+  if (modelo.madeiraId) params.set('tipo', modelo.madeiraId);
   return `/projetos/novo?${params}`;
 }
 

@@ -32,6 +32,8 @@ model Projeto {
   codigo       String        @unique
   nome         String
   qtdeMadeira  Float         @default(0)
+  madeira      ItemEstoque?  @relation(fields: [madeiraId], references: [id], onDelete: SetNull)
+  madeiraId    String?
   status       StatusProjeto @default(ABERTO)
   criadoPor    Usuario       @relation(fields: [usuarioId], references: [id])
   usuarioId    String
@@ -59,20 +61,21 @@ model Cliente {
 }
 
 model Fornecedor {
-  id        String   @id @default(cuid())
-  nome      String
-  telefone  String?
-  email     String?
-  endereco  String?
-  produto   String[] @default([])
+  id       String   @id @default(cuid())
+  nome     String
+  telefone String?
+  email    String?
+  endereco String?
+  produto  String[] @default([])
 }
 
 model ItemEstoque {
-  id         String @id @default(cuid())
+  id         String           @id @default(cuid())
   nome       String
-  quantidade Float  @default(0)
+  quantidade Float            @default(0)
   unidade    String
   categoria  CategoriaEstoque @default(MADEIRA)
+  projetos   Projeto[]
 }
 
 enum CategoriaEstoque {

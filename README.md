@@ -7,8 +7,8 @@ Sistema web para controle de uma marcenaria: projetos, estoque, fornecedores e u
 ## Funcionalidades
 
 - **Visão geral:** projetos ativos, atrasos, entregas da semana, gráficos por mês e alertas de estoque.
-- **Projetos:** lista de pedidos com busca e filtros, catálogo dos modelos mais feitos, edição e conclusão.
-- **Estoque:** madeira, produtos químicos e EPIs, com registro de entradas e saídas.
+- **Projetos:** lista de pedidos com busca e filtros, catálogo dos modelos mais feitos, edição e conclusão. Cada projeto informa o tipo e a quantidade de madeira.
+- **Estoque:** madeira, produtos químicos e EPIs, com registro de entradas e saídas. Ao concluir um projeto, a madeira usada é descontada do estoque automaticamente.
 - **Fornecedores:** contatos, endereço e produtos de cada fornecedor.
 - **Usuários:** cadastro de acessos com dois perfis, Administrador e Projetista.
 - **Minha conta:** alterar nome, e-mail e senha, tema noturno e fonte maior.

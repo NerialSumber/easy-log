@@ -9,8 +9,9 @@ import { PageHeader } from '@/components/page-header';
 import { buscarLista, mensagemDeErro, requisitar } from '@/lib/api';
 import { useExigirPermissao } from '@/lib/current-user';
 import { CATEGORIAS } from '@/lib/estoque';
-import type { Categoria, ItemEstoque } from '@/lib/types';
+import type { Categoria, ItemEstoque, ProjetoLista } from '@/lib/types';
 import { EditarItem } from './_components/editar-item';
+import { MadeiraEmUso } from './_components/madeira-em-uso';
 import { MovimentoEstoque, type Operacao } from './_components/movimento-estoque';
 import { NovoItem } from './_components/novo-item';
 import { TabelaEstoque } from './_components/tabela-estoque';
@@ -33,6 +34,9 @@ export default function EstoquePage() {
     item: ItemEstoque;
     operacao: Operacao;
   } | null>(null);
+  const [projetosComMadeira, setProjetosComMadeira] = useState<ProjetoLista[] | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!permitido) return;
@@ -40,7 +44,22 @@ export default function EstoquePage() {
       setItens(lista);
       setCarregando(false);
     });
+    buscarLista<ProjetoLista>('/api/projetos').then((projetos) =>
+      setProjetosComMadeira(
+        projetos.filter(
+          (projeto) => projeto.status !== 'CONCLUIDO' && projeto.qtdeMadeira > 0,
+        ),
+      ),
+    );
   }, [permitido]);
+
+  const madeiraEmUso = (projetosComMadeira ?? []).reduce(
+    (total, projeto) => total + projeto.qtdeMadeira,
+    0,
+  );
+  const madeiraNoEstoque = itens
+    .filter((item) => item.categoria === 'MADEIRA')
+    .reduce((total, item) => total + item.quantidade, 0);
 
   const info = CATEGORIAS[categoria];
   const daCategoria = itens.filter((item) => item.categoria === categoria);
@@ -94,6 +113,14 @@ export default function EstoquePage() {
             setBusca('');
           }}
         />
+
+        {categoria === 'MADEIRA' && !carregando && projetosComMadeira !== null ? (
+          <MadeiraEmUso
+            emUso={madeiraEmUso}
+            projetos={projetosComMadeira.length}
+            emEstoque={madeiraNoEstoque}
+          />
+        ) : null}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

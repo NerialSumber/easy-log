@@ -13,9 +13,9 @@ import { GraficoColunas, GraficoLinhas, GraficoRosca } from './_components/grafi
 import { CarregandoDashboard, Cartao, Painel, Vazio } from './_components/paineis';
 
 const AVISO_ESTOQUE = {
-  critico: 'Sem madeira suficiente. ',
-  atencao: 'Estoque baixo. ',
-  ok: '',
+  critico: 'Há itens em falta ou madeira insuficiente.',
+  atencao: 'Há itens com estoque baixo.',
+  ok: 'Estoque em dia.',
 };
 
 function hojePorExtenso() {
@@ -66,10 +66,29 @@ function Conteudo({ dados }: { dados: DashboardDados }) {
   const { resumo } = dados;
   const madeira = `${formatarNumero(resumo.madeiraAtiva)} m²`;
   const estoque = `${formatarNumero(resumo.madeiraEstoque ?? 0)} m²`;
+  const temEstoque = resumo.madeiraEstoque !== null;
+  const madeiraEstoque = resumo.madeiraEstoque ?? 0;
+  const faltaMadeira = temEstoque && resumo.madeiraAtiva > madeiraEstoque;
+  const usoDoEstoque =
+    madeiraEstoque > 0
+      ? (resumo.madeiraAtiva / madeiraEstoque) * 100
+      : resumo.madeiraAtiva > 0
+        ? 100
+        : 0;
+
+  let detalheMadeira = 'Somando os projetos ativos.';
+  if (temEstoque) {
+    detalheMadeira =
+      madeiraEstoque > 0
+        ? `${formatarNumero(usoDoEstoque, 0)}% dos ${estoque} em estoque`
+        : 'Sem madeira no estoque.';
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`grid grid-cols-1 gap-5 md:grid-cols-2 ${dados.podeVerEstoque ? 'lg:grid-cols-3 xl:grid-cols-5' : 'xl:grid-cols-4'}`}
+      >
         <Cartao
           titulo="Projetos ativos"
           valor={String(resumo.ativos)}
@@ -87,19 +106,25 @@ function Conteudo({ dados }: { dados: DashboardDados }) {
           valor={String(resumo.entregasProximas)}
           href="/projetos"
         />
+        <Cartao
+          titulo="Madeira em uso"
+          valor={madeira}
+          detalhe={detalheMadeira}
+          href={dados.podeVerEstoque ? '/estoque' : '/projetos'}
+          destaque={faltaMadeira}
+          progresso={temEstoque ? usoDoEstoque : undefined}
+        />
         {dados.podeVerEstoque ? (
           <Cartao
             titulo="Alertas de estoque"
             valor={String(resumo.alertasEstoque ?? 0)}
-            detalhe={`${AVISO_ESTOQUE[resumo.nivelEstoque ?? 'ok']}Estoque ${estoque} · projetos ${madeira}`}
+            detalhe={AVISO_ESTOQUE[resumo.nivelEstoque ?? 'ok']}
             href="/estoque"
             destaque={
               resumo.nivelEstoque === 'critico' || resumo.nivelEstoque === 'atencao'
             }
           />
-        ) : (
-          <Cartao titulo="Madeira em uso" valor={madeira} href="/projetos" />
-        )}
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">

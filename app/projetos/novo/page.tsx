@@ -12,10 +12,11 @@ import {
   classeCampo,
 } from '@/components/campo';
 import { ClienteField, dadosDoCliente } from '@/components/cliente-field';
+import { MadeiraField } from '@/components/madeira-field';
 import { PageHeader } from '@/components/page-header';
 import { PeriodoField } from '@/components/periodo-field';
 import { buscarLista, mensagemDeErro, requisitar } from '@/lib/api';
-import type { ClienteResumo } from '@/lib/types';
+import type { ClienteResumo, MadeiraOpcao } from '@/lib/types';
 
 function madeiraDoLink(valor: string | null) {
   const numero = Number(valor);
@@ -29,15 +30,18 @@ function FormularioNovoProjeto() {
 
   const [nome, setNome] = useState(modelo);
   const [qtdeMadeira, setQtdeMadeira] = useState(madeiraDoLink(params.get('madeira')));
+  const [madeiraId, setMadeiraId] = useState(params.get('tipo')?.trim() ?? '');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [clienteId, setClienteId] = useState(params.get('cliente')?.trim() ?? '');
   const [clienteNome, setClienteNome] = useState('');
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
+  const [madeiras, setMadeiras] = useState<MadeiraOpcao[]>([]);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     buscarLista<ClienteResumo>('/api/clientes').then(setClientes);
+    buscarLista<MadeiraOpcao>('/api/madeiras').then(setMadeiras);
   }, []);
 
   async function salvar(event: FormEvent) {
@@ -47,6 +51,7 @@ function FormularioNovoProjeto() {
       await requisitar('/api/projetos', 'POST', {
         nome,
         qtdeMadeira,
+        madeiraId,
         dataInicio,
         dataFim,
         ...dadosDoCliente(clienteId, clienteNome),
@@ -105,17 +110,13 @@ function FormularioNovoProjeto() {
             onDataFimChange={setDataFim}
           />
 
-          <Campo rotulo="Qtd. Madeira (m²) *">
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={qtdeMadeira}
-              onChange={(e) => setQtdeMadeira(e.target.value)}
-              className={classeCampo}
-              placeholder="0.00"
-            />
-          </Campo>
+          <MadeiraField
+            madeiras={madeiras}
+            madeiraId={madeiraId}
+            qtdeMadeira={qtdeMadeira}
+            onMadeiraIdChange={setMadeiraId}
+            onQtdeMadeiraChange={setQtdeMadeira}
+          />
 
           <div className="flex justify-end gap-3 pt-2">
             <Link href="/projetos" className={classeBotaoSecundario}>
