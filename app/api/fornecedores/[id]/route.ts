@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { exigirPermissao } from '@/lib/auth';
+import { lerFornecedor } from '@/lib/fornecedores';
 import { prisma } from '@/lib/prisma';
-import { formatarTelefone, validarContato } from '@/lib/contato';
 
 export const dynamic = 'force-dynamic';
+
 type Context = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, { params }: Context) {
@@ -11,42 +12,17 @@ export async function PUT(request: Request, { params }: Context) {
     const acesso = await exigirPermissao('fornecedores', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
-    const body = (await request.json()) as {
-      nome?: unknown;
-      telefone?: unknown;
-      email?: unknown;
-      endereco?: unknown;
-      produto?: unknown;
-    };
-    const nome = typeof body.nome === 'string' ? body.nome.trim() : '';
-    const telefone =
-      typeof body.telefone === 'string' ? formatarTelefone(body.telefone) : '';
-    const email = typeof body.email === 'string' ? body.email.trim() : '';
-    const endereco = typeof body.endereco === 'string' ? body.endereco.trim() : '';
-    const produto = Array.isArray(body.produto)
-      ? body.produto
-          .filter((item): item is string => typeof item === 'string')
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : [];
-    if (!nome)
-      return NextResponse.json(
-        { error: 'O nome do fornecedor é obrigatório.' },
-        { status: 400 },
-      );
-    const erroContato = validarContato(telefone, email);
-    if (erroContato) return NextResponse.json({ error: erroContato }, { status: 400 });
-    const fornecedor = await prisma.fornecedor.update({
+
+    const fornecedor = lerFornecedor(await request.json());
+    if (!fornecedor.dados) {
+      return NextResponse.json({ error: fornecedor.erro }, { status: 400 });
+    }
+
+    const atualizado = await prisma.fornecedor.update({
       where: { id },
-      data: {
-        nome,
-        telefone: telefone || null,
-        email: email || null,
-        endereco: endereco || null,
-        produto,
-      },
+      data: fornecedor.dados,
     });
-    return NextResponse.json(fornecedor);
+    return NextResponse.json(atualizado);
   } catch (error) {
     console.error('ERRO AO ATUALIZAR FORNECEDOR:', error);
     return NextResponse.json(
@@ -61,8 +37,9 @@ export async function DELETE(_request: Request, { params }: Context) {
     const acesso = await exigirPermissao('fornecedores', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
+
     await prisma.fornecedor.delete({ where: { id } });
-    return NextResponse.json({ message: 'Excluído com sucesso.' });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('ERRO AO EXCLUIR FORNECEDOR:', error);
     return NextResponse.json({ error: 'Erro ao excluir o fornecedor.' }, { status: 500 });

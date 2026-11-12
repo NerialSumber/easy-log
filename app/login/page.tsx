@@ -4,50 +4,32 @@ import { useState, type FormEvent } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/logo';
+import { mensagemDeErro, requisitar } from '@/lib/api';
+import { salvarSessao } from '@/lib/current-user';
+import type { Usuario } from '@/lib/types';
 
-type UsuarioSessao = {
-  id: string;
-  nome: string;
-  email: string;
-  role: 'ADMIN' | 'PROJETISTA';
-  roleLabel: string;
-};
-
-export default function Login() {
+export default function LoginPage() {
   const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
-  const handleLogin = async (e: FormEvent) => {
+  async function entrar(e: FormEvent) {
     e.preventDefault();
     setError('');
     setEnviando(true);
-
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await res.json()) as UsuarioSessao | { error?: string };
-      if (!res.ok) {
-        setError(('error' in data && data.error) || 'Não foi possível entrar.');
-        return;
-      }
-
-      localStorage.setItem('current_user', JSON.stringify(data));
-      window.dispatchEvent(new Event('easylog-user'));
+      salvarSessao(
+        await requisitar<Usuario>('/api/auth/login', 'POST', { email, password }),
+      );
       router.push('/');
-    } catch {
-      setError('Erro de conexão. Tente novamente.');
-    } finally {
+    } catch (erro) {
+      setError(mensagemDeErro(erro));
       setEnviando(false);
     }
-  };
+  }
 
   return (
     <main className="bg-canvas flex min-h-screen">
@@ -81,7 +63,7 @@ export default function Login() {
               </p>
             ) : null}
 
-            <form onSubmit={handleLogin} className="mt-8 space-y-5">
+            <form onSubmit={entrar} className="mt-8 space-y-5">
               <div>
                 <label htmlFor="email" className="text-ink mb-2 block text-sm">
                   E-mail
@@ -99,14 +81,9 @@ export default function Login() {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label htmlFor="senha" className="text-ink text-sm">
-                    Senha
-                  </label>
-                  <a href="#" className="text-accent text-sm">
-                    Esqueci a senha?
-                  </a>
-                </div>
+                <label htmlFor="senha" className="text-ink mb-2 block text-sm">
+                  Senha
+                </label>
                 <div className="relative">
                   <input
                     id="senha"

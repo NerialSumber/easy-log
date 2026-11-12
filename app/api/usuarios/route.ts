@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import {
+  dadosUsuarioValidos,
   exigirPermissao,
   hashSenha,
   lerCamposAuth,
   paraUsuarioPublico,
 } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export async function GET() {
   try {
     const acesso = await exigirPermissao('usuarios');
     if (!acesso.ok) return acesso.resposta;
+
     const usuarios = await prisma.usuario.findMany({
       orderBy: { nome: 'asc' },
       select: { id: true, nome: true, email: true, role: true },
@@ -30,12 +32,7 @@ export async function POST(request: Request) {
     if (!acesso.ok) return acesso.resposta;
 
     const campos = lerCamposAuth(await request.json());
-    if (
-      !campos ||
-      campos.nome.length < 2 ||
-      !campos.email.includes('@') ||
-      campos.senha.length < 6
-    ) {
+    if (!dadosUsuarioValidos(campos.nome, campos.email) || campos.senha.length < 6) {
       return NextResponse.json(
         { error: 'Informe nome, e-mail válido e senha com pelo menos 6 caracteres.' },
         { status: 400 },

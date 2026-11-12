@@ -1,28 +1,16 @@
 import { NextResponse } from 'next/server';
+import {
+  dadosUsuarioValidos,
+  exigirPermissao,
+  hashSenha,
+  lerCamposAuth,
+  paraUsuarioPublico,
+} from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { exigirPermissao, hashSenha, paraUsuarioPublico } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 type Context = { params: Promise<{ id: string }> };
-
-function lerEdicao(body: unknown) {
-  if (!body || typeof body !== 'object') return null;
-  const dados = body as Record<string, unknown>;
-  const nome = typeof dados.nome === 'string' ? dados.nome.trim() : '';
-  const email = typeof dados.email === 'string' ? dados.email.trim().toLowerCase() : '';
-  const senha =
-    typeof dados.password === 'string'
-      ? dados.password
-      : typeof dados.senha === 'string'
-        ? dados.senha
-        : '';
-  const role =
-    dados.role === 'ADMIN' ? 'ADMIN' : dados.role === 'PROJETISTA' ? 'PROJETISTA' : '';
-  if (nome.length < 2 || !email.includes('@') || !role) return null;
-  if (senha && senha.length < 6) return null;
-  return { nome, email, senha, role: role as 'ADMIN' | 'PROJETISTA' };
-}
 
 async function ehUltimoAdmin(id: string) {
   const admins = await prisma.usuario.count({ where: { role: 'ADMIN' } });
@@ -35,8 +23,12 @@ export async function PUT(request: Request, { params }: Context) {
     const acesso = await exigirPermissao('usuarios', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
-    const campos = lerEdicao(await request.json());
-    if (!campos) {
+
+    const campos = lerCamposAuth(await request.json());
+    if (
+      !dadosUsuarioValidos(campos.nome, campos.email) ||
+      (campos.senha && campos.senha.length < 6)
+    ) {
       return NextResponse.json(
         {
           error:
@@ -47,8 +39,9 @@ export async function PUT(request: Request, { params }: Context) {
     }
 
     const alvo = await prisma.usuario.findUnique({ where: { id } });
-    if (!alvo)
+    if (!alvo) {
       return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+    }
 
     if (id === acesso.usuario.id && campos.role !== 'ADMIN') {
       return NextResponse.json(
@@ -113,12 +106,7 @@ export async function DELETE(_request: Request, { params }: Context) {
     await prisma.usuario.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code?: string }).code === 'P2003'
-    ) {
+    if ((error as { code?: string } | null)?.code === 'P2003') {
       return NextResponse.json(
         { error: 'Este usuário possui projetos e não pode ser excluído.' },
         { status: 400 },

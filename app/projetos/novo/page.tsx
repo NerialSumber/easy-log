@@ -5,88 +5,58 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Save } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
-import { ClienteField } from '@/components/cliente-field';
+import {
+  Campo,
+  classeBotao,
+  classeBotaoSecundario,
+  classeCampo,
+} from '@/components/campo';
+import { ClienteField, dadosDoCliente } from '@/components/cliente-field';
 import { PageHeader } from '@/components/page-header';
 import { PeriodoField } from '@/components/periodo-field';
+import { buscarLista, mensagemDeErro, requisitar } from '@/lib/api';
 import type { ClienteResumo } from '@/lib/types';
 
-function lerMadeira(valor: string | null) {
-  if (!valor || !valor.trim()) return '';
+function madeiraDoLink(valor: string | null) {
   const numero = Number(valor);
-  return Number.isFinite(numero) && numero >= 0 ? String(numero) : '';
+  return valor?.trim() && Number.isFinite(numero) && numero >= 0 ? String(numero) : '';
 }
 
 function FormularioNovoProjeto() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nomeInicial = searchParams.get('nome')?.trim() ?? '';
-  const madeiraInicial = lerMadeira(searchParams.get('madeira'));
-  const clienteInicial = searchParams.get('cliente')?.trim() ?? '';
-  const aPartirDe = nomeInicial.length > 0;
+  const params = useSearchParams();
+  const modelo = params.get('nome')?.trim() ?? '';
 
-  const [nome, setNome] = useState(nomeInicial);
-  const [qtdeMadeira, setQtdeMadeira] = useState(madeiraInicial);
+  const [nome, setNome] = useState(modelo);
+  const [qtdeMadeira, setQtdeMadeira] = useState(madeiraDoLink(params.get('madeira')));
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [clienteId, setClienteId] = useState(clienteInicial);
+  const [clienteId, setClienteId] = useState(params.get('cliente')?.trim() ?? '');
   const [clienteNome, setClienteNome] = useState('');
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    fetch('/api/clientes', { cache: 'no-store' })
-      .then(async (res) => {
-        const data: unknown = await res.json();
-        if (!cancelled && res.ok && Array.isArray(data)) {
-          setClientes(data as ClienteResumo[]);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setClientes([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    buscarLista<ClienteResumo>('/api/clientes').then(setClientes);
   }, []);
 
-  const handleSalvarProjeto = async (e: FormEvent) => {
-    e.preventDefault();
+  async function salvar(event: FormEvent) {
+    event.preventDefault();
     setSalvando(true);
-
     try {
-      const response = await fetch('/api/projetos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nome: aPartirDe ? nomeInicial : nome,
-          qtdeMadeira,
-          dataInicio,
-          dataFim,
-          clienteId: clienteId === '__new__' ? undefined : clienteId,
-          clienteNome: clienteId === '__new__' ? clienteNome : undefined,
-        }),
+      await requisitar('/api/projetos', 'POST', {
+        nome,
+        qtdeMadeira,
+        dataInicio,
+        dataFim,
+        ...dadosDoCliente(clienteId, clienteNome),
       });
-
-      if (response.ok) {
-        router.push('/projetos');
-      } else {
-        const errorData = (await response.json()) as { error?: string };
-        alert(`Erro do servidor: ${errorData.error || 'Não foi possível salvar.'}`);
-      }
-    } catch (error) {
-      console.error('Erro na requisição:', error);
-      alert('Erro de conexão. Verifique se o servidor está rodando.');
-    } finally {
+      router.push('/projetos');
+    } catch (erro) {
+      alert(mensagemDeErro(erro));
       setSalvando(false);
     }
-  };
+  }
 
   return (
     <AppShell
@@ -95,46 +65,38 @@ function FormularioNovoProjeto() {
         <PageHeader
           title="Novo Projeto"
           subtitle={
-            aPartirDe
-              ? `Repetindo “${nomeInicial}”. Ajuste cliente, madeira e o período.`
+            modelo
+              ? `Repetindo “${modelo}”. Ajuste cliente, madeira e o período.`
               : 'Informe o cliente e os dados iniciais do projeto.'
           }
         />
       }
     >
       <div className="border-line bg-surface overflow-hidden rounded-xl border">
-        <div className="p-6">
-          <h2 className="text-ink text-lg leading-7 font-bold">Detalhes do Projeto</h2>
-        </div>
+        <h2 className="text-ink p-6 text-lg leading-7 font-bold">Detalhes do Projeto</h2>
 
-        <form onSubmit={handleSalvarProjeto} className="flex flex-col gap-4 p-6 pt-0">
+        <form onSubmit={salvar} className="flex flex-col gap-4 p-6 pt-0">
           <ClienteField
             clientes={clientes}
             clienteId={clienteId}
             clienteNome={clienteNome}
-            onClienteIdChange={(value) => {
-              setClienteId(value);
+            onClienteIdChange={(valor) => {
+              setClienteId(valor);
               setClienteNome('');
             }}
             onClienteNomeChange={setClienteNome}
           />
 
-          <div className="flex flex-col gap-2">
-            <label className="text-ink text-sm font-bold">Nome do Projeto *</label>
-            {aPartirDe ? (
-              <p className="border-line bg-soft text-ink rounded-lg border px-4 py-3 text-sm">
-                {nomeInicial}
-              </p>
-            ) : (
-              <input
-                type="text"
-                required
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
-              />
-            )}
-          </div>
+          <Campo rotulo="Nome do Projeto *">
+            <input
+              type="text"
+              required
+              readOnly={Boolean(modelo)}
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className={classeCampo}
+            />
+          </Campo>
 
           <PeriodoField
             dataInicio={dataInicio}
@@ -143,31 +105,23 @@ function FormularioNovoProjeto() {
             onDataFimChange={setDataFim}
           />
 
-          <div className="flex flex-col gap-2">
-            <label className="text-ink text-sm font-bold">Qtd. Madeira (m²) *</label>
+          <Campo rotulo="Qtd. Madeira (m²) *">
             <input
               type="number"
               step="0.01"
               required
               value={qtdeMadeira}
               onChange={(e) => setQtdeMadeira(e.target.value)}
-              className="border-line bg-soft focus:bg-surface focus:ring-accent w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
+              className={classeCampo}
               placeholder="0.00"
             />
-          </div>
+          </Campo>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Link
-              href="/projetos"
-              className="bg-soft text-muted hover:bg-soft rounded-lg px-6 py-3 text-sm font-bold"
-            >
+            <Link href="/projetos" className={classeBotaoSecundario}>
               Cancelar
             </Link>
-            <button
-              type="submit"
-              disabled={salvando}
-              className="bg-accent-fill text-on-accent flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-bold disabled:opacity-60"
-            >
+            <button type="submit" disabled={salvando} className={classeBotao}>
               <Save className="size-4" />
               {salvando ? 'Salvando...' : 'Salvar Projeto'}
             </button>
@@ -178,7 +132,7 @@ function FormularioNovoProjeto() {
   );
 }
 
-export default function NovoProjeto() {
+export default function NovoProjetoPage() {
   return (
     <Suspense
       fallback={

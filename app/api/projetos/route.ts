@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { exigirPermissao } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import {
   codigoDuplicado,
   gerarCodigoProjeto,
-  parsePeriodoProjeto,
-  prismaErrorMessage,
+  lerMadeira,
+  lerPeriodo,
   projetoInclude,
-  resolveClienteId,
+  resolverCliente,
 } from '@/lib/projetos';
 import { statusPorPeriodo, statusVisivel } from '@/lib/status-projeto';
 
@@ -17,6 +17,7 @@ export async function GET() {
   try {
     const acesso = await exigirPermissao('projetos');
     if (!acesso.ok) return acesso.resposta;
+
     const projetos = await prisma.projeto.findMany({
       include: projetoInclude,
       orderBy: { criadoEm: 'desc' },
@@ -28,69 +29,62 @@ export async function GET() {
       })),
     );
   } catch (error) {
-    console.error('ERRO INTERNO NO GET PROJETOS:', error);
-    return NextResponse.json({ error: 'Erro ao buscar projetos' }, { status: 500 });
+    console.error('ERRO AO BUSCAR PROJETOS:', error);
+    return NextResponse.json({ error: 'Erro ao buscar projetos.' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } = body;
+    const acesso = await exigirPermissao('projetos', 'escrever');
+    if (!acesso.ok) return acesso.resposta;
 
-    if (!nome?.trim()) {
+    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } =
+      await request.json();
+
+    if (typeof nome !== 'string' || !nome.trim()) {
       return NextResponse.json(
         { error: 'O nome do projeto é obrigatório.' },
         { status: 400 },
       );
     }
 
-    const periodo = parsePeriodoProjeto(dataInicio, dataFim);
+    const periodo = lerPeriodo(dataInicio, dataFim);
     if (!periodo.ok) {
       return NextResponse.json({ error: periodo.error }, { status: 400 });
     }
 
-    const resolvedClienteId = await resolveClienteId(clienteId, clienteNome);
-    if (!resolvedClienteId) {
+    const cliente = await resolverCliente(clienteId, clienteNome);
+    if (!cliente) {
       return NextResponse.json(
         { error: 'Selecione um cliente ou informe o nome de um novo cliente.' },
         { status: 400 },
       );
     }
 
-    const acesso = await exigirPermissao('projetos', 'escrever');
-    if (!acesso.ok) return acesso.resposta;
-
     const dados = {
       nome: nome.trim(),
-      qtdeMadeira: qtdeMadeira ? parseFloat(qtdeMadeira) : 0,
+      qtdeMadeira: lerMadeira(qtdeMadeira),
       status: statusPorPeriodo(periodo.dataInicio, periodo.dataFim),
       usuarioId: acesso.usuario.id,
-      clienteId: resolvedClienteId,
+      clienteId: cliente,
       dataInicio: periodo.dataInicio,
       dataFim: periodo.dataFim,
     };
 
-    let novoProjeto = null;
-    for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+    for (let tentativa = 1; ; tentativa += 1) {
       try {
-        novoProjeto = await prisma.projeto.create({
+        const projeto = await prisma.projeto.create({
           data: { ...dados, codigo: await gerarCodigoProjeto() },
           include: projetoInclude,
         });
-        break;
+        return NextResponse.json(projeto, { status: 201 });
       } catch (error) {
-        if (codigoDuplicado(error) && tentativa < 4) continue;
-        throw error;
+        if (!codigoDuplicado(error) || tentativa >= 5) throw error;
       }
     }
-
-    return NextResponse.json(novoProjeto, { status: 201 });
   } catch (error) {
-    console.error('Erro ao criar projeto:', error);
-    return NextResponse.json(
-      { error: prismaErrorMessage(error, 'Erro ao salvar o projeto.') },
-      { status: 500 },
-    );
+    console.error('ERRO AO CRIAR PROJETO:', error);
+    return NextResponse.json({ error: 'Erro ao salvar o projeto.' }, { status: 500 });
   }
 }

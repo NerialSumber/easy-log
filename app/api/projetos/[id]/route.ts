@@ -1,55 +1,29 @@
 import { NextResponse } from 'next/server';
 import { exigirPermissao } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import {
-  parsePeriodoProjeto,
-  prismaErrorMessage,
-  projetoInclude,
-  resolveClienteId,
-} from '@/lib/projetos';
-import { statusPorPeriodo, statusVisivel } from '@/lib/status-projeto';
+import { lerMadeira, lerPeriodo, projetoInclude, resolverCliente } from '@/lib/projetos';
+import { statusPorPeriodo } from '@/lib/status-projeto';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const acesso = await exigirPermissao('projetos');
-    if (!acesso.ok) return acesso.resposta;
-    const { id } = await params;
-    const projeto = await prisma.projeto.findUnique({
-      where: { id },
-      include: projetoInclude,
-    });
+type Context = { params: Promise<{ id: string }> };
 
-    if (!projeto) {
-      return NextResponse.json({ error: 'Projeto não encontrado.' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      ...projeto,
-      status: statusVisivel(projeto.status, projeto.dataInicio, projeto.dataFim),
-    });
-  } catch (error) {
-    console.error('ERRO AO BUSCAR PROJETO:', error);
-    return NextResponse.json({ error: 'Erro ao buscar o projeto.' }, { status: 500 });
-  }
-}
-
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: Request, { params }: Context) {
   try {
     const acesso = await exigirPermissao('projetos', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
-    const body = await request.json();
-    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } = body;
+    const { nome, qtdeMadeira, clienteId, clienteNome, dataInicio, dataFim } =
+      await request.json();
 
-    const periodo = parsePeriodoProjeto(dataInicio, dataFim);
+    if (typeof nome !== 'string' || !nome.trim()) {
+      return NextResponse.json(
+        { error: 'O nome do projeto é obrigatório.' },
+        { status: 400 },
+      );
+    }
+
+    const periodo = lerPeriodo(dataInicio, dataFim);
     if (!periodo.ok) {
       return NextResponse.json({ error: periodo.error }, { status: 400 });
     }
@@ -62,38 +36,32 @@ export async function PUT(
       return NextResponse.json({ error: 'Projeto não encontrado.' }, { status: 404 });
     }
 
-    const resolvedClienteId = await resolveClienteId(clienteId, clienteNome);
+    const cliente = await resolverCliente(clienteId, clienteNome);
 
-    const projetoAtualizado = await prisma.projeto.update({
+    const projeto = await prisma.projeto.update({
       where: { id },
       data: {
-        nome,
-        qtdeMadeira: qtdeMadeira ? parseFloat(qtdeMadeira.toString()) : 0,
+        nome: nome.trim(),
+        qtdeMadeira: lerMadeira(qtdeMadeira),
         status:
           atual.status === 'CONCLUIDO'
             ? 'CONCLUIDO'
             : statusPorPeriodo(periodo.dataInicio, periodo.dataFim),
         dataInicio: periodo.dataInicio,
         dataFim: periodo.dataFim,
-        ...(resolvedClienteId ? { clienteId: resolvedClienteId } : {}),
+        ...(cliente ? { clienteId: cliente } : {}),
       },
       include: projetoInclude,
     });
 
-    return NextResponse.json(projetoAtualizado);
+    return NextResponse.json(projeto);
   } catch (error) {
     console.error('ERRO AO ATUALIZAR PROJETO:', error);
-    return NextResponse.json(
-      { error: prismaErrorMessage(error, 'Erro ao atualizar') },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Erro ao atualizar o projeto.' }, { status: 500 });
   }
 }
 
-export async function PATCH(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(_request: Request, { params }: Context) {
   try {
     const acesso = await exigirPermissao('projetos', 'escrever');
     if (!acesso.ok) return acesso.resposta;
@@ -104,7 +72,6 @@ export async function PATCH(
       data: { status: 'CONCLUIDO' },
       include: projetoInclude,
     });
-
     return NextResponse.json(projeto);
   } catch (error) {
     console.error('ERRO AO CONCLUIR PROJETO:', error);
@@ -112,21 +79,16 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: Request, { params }: Context) {
   try {
     const acesso = await exigirPermissao('projetos', 'escrever');
     if (!acesso.ok) return acesso.resposta;
     const { id } = await params;
 
-    await prisma.projeto.delete({
-      where: { id },
-    });
-    return NextResponse.json({ message: 'Excluído com sucesso' });
+    await prisma.projeto.delete({ where: { id } });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('ERRO AO EXCLUIR PROJETO:', error);
-    return NextResponse.json({ error: 'Erro ao excluir' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao excluir o projeto.' }, { status: 500 });
   }
 }

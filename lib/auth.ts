@@ -3,26 +3,12 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { pode, rotuloRole, type Acao, type Area, type Role } from '@/lib/permissoes';
+import type { Usuario } from '@/lib/types';
 
 export const SESSION_COOKIE = 'easylog_session';
 const SESSION_DAYS = 30;
 
-export type UsuarioPublico = {
-  id: string;
-  nome: string;
-  email: string;
-  role: Role;
-  roleLabel: string;
-};
-
-type UsuarioBanco = {
-  id: string;
-  nome: string;
-  email: string;
-  role: Role;
-};
-
-export function paraUsuarioPublico(usuario: UsuarioBanco): UsuarioPublico {
+export function paraUsuarioPublico(usuario: Omit<Usuario, 'roleLabel'>): Usuario {
   return {
     id: usuario.id,
     nome: usuario.nome,
@@ -73,7 +59,10 @@ export function lerTokenSessao(token: string | undefined) {
   const b = Buffer.from(esperada);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const dados = JSON.parse(Buffer.from(payload, 'base64url').toString()) as { id?: string; exp?: number };
+    const dados = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+      id?: string;
+      exp?: number;
+    };
     if (!dados.id || !dados.exp || dados.exp < Date.now()) return null;
     return dados.id;
   } catch {
@@ -109,18 +98,24 @@ export async function exigirPermissao(area: Area, acao: Acao = 'ver') {
   if (!pode(usuario.role, area, acao)) {
     return {
       ok: false as const,
-      resposta: NextResponse.json({ error: 'Você não tem permissão para esta ação.' }, { status: 403 }),
+      resposta: NextResponse.json(
+        { error: 'Você não tem permissão para esta ação.' },
+        { status: 403 },
+      ),
     };
   }
   return { ok: true as const, usuario };
 }
 
 export function lerCamposAuth(body: unknown) {
-  if (!body || typeof body !== 'object') return null;
-  const dados = body as Record<string, unknown>;
+  const dados = (body ?? {}) as Record<string, unknown>;
   const nome = typeof dados.nome === 'string' ? dados.nome.trim() : '';
   const email = typeof dados.email === 'string' ? dados.email.trim().toLowerCase() : '';
-  const senha = typeof dados.password === 'string' ? dados.password : typeof dados.senha === 'string' ? dados.senha : '';
-  const role = dados.role === 'ADMIN' ? 'ADMIN' as const : 'PROJETISTA' as const;
+  const senha = typeof dados.password === 'string' ? dados.password : '';
+  const role: Role = dados.role === 'ADMIN' ? 'ADMIN' : 'PROJETISTA';
   return { nome, email, senha, role };
+}
+
+export function dadosUsuarioValidos(nome: string, email: string) {
+  return nome.length >= 2 && email.includes('@');
 }

@@ -1,15 +1,12 @@
+import { formatarNumero } from '@/lib/formatos';
+
 type Ponto = {
   rotulo: string;
   valor: number;
   cor?: string;
 };
 
-function formatarPadrao(valor: number) {
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valor);
-}
-
 function capitalizar(texto: string) {
-  if (!texto) return texto;
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
@@ -126,33 +123,31 @@ export function GraficoRosca({
 
 export function GraficoColunas({ itens, unidade }: { itens: Ponto[]; unidade?: string }) {
   const maximo = Math.max(...itens.map((item) => item.valor), 1);
+  const comUnidade = (valor: number) =>
+    `${formatarNumero(valor)}${unidade ? ` ${unidade}` : ''}`;
 
   return (
     <div
       role="img"
       aria-label={itens
-        .map(
-          (item) =>
-            `${item.rotulo}: ${formatarPadrao(item.valor)}${unidade ? ` ${unidade}` : ''}`,
-        )
+        .map((item) => `${item.rotulo}: ${comUnidade(item.valor)}`)
         .join(', ')}
     >
       <div className="flex h-48 items-end gap-3">
         {itens.map((item) => {
           const altura = item.valor <= 0 ? 0 : Math.max((item.valor / maximo) * 100, 6);
-          const legenda = `${capitalizar(item.rotulo)}: ${formatarPadrao(item.valor)}${unidade ? ` ${unidade}` : ''}`;
           return (
             <div
               key={item.rotulo}
               className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
             >
               <span className="text-muted mb-2 text-xs tabular-nums">
-                {formatarPadrao(item.valor)}
+                {formatarNumero(item.valor)}
               </span>
               <div
                 className="bg-ink w-full max-w-9"
                 style={{ height: `${altura}%` }}
-                title={legenda}
+                title={`${capitalizar(item.rotulo)}: ${comUnidade(item.valor)}`}
               />
             </div>
           );
@@ -322,45 +317,5 @@ export function GraficoLinhas({
         ))}
       </svg>
     </div>
-  );
-}
-
-export function GraficoBarras({ itens }: { itens: Ponto[] }) {
-  const maximo = Math.max(...itens.map((item) => item.valor), 1);
-
-  return (
-    <ol
-      className="flex flex-col gap-2"
-      aria-label={itens.map((item) => `${item.rotulo}: ${item.valor}`).join(', ')}
-    >
-      {itens.map((item, indice) => {
-        const lider = indice === 0;
-        const largura = Math.max((item.valor / maximo) * 100, item.valor > 0 ? 8 : 0);
-
-        return (
-          <li key={item.rotulo} className="flex items-center gap-4 py-2">
-            <span
-              className={`w-4 text-sm tabular-nums ${lider ? 'text-accent' : 'text-faint'}`}
-            >
-              {indice + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-ink truncate text-sm">{item.rotulo}</span>
-                <span className="text-muted shrink-0 text-sm tabular-nums">
-                  {item.valor} {item.valor === 1 ? 'vez' : 'vezes'}
-                </span>
-              </div>
-              <div className="bg-line mt-2 h-px">
-                <div
-                  className={`h-px ${lider ? 'bg-accent' : 'bg-ink'}`}
-                  style={{ width: `${largura}%` }}
-                />
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
   );
 }

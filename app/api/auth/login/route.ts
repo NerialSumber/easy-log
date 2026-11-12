@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const campos = lerCamposAuth(await request.json());
-    if (!campos || !campos.email.includes('@') || !campos.senha) {
+    if (!campos.email.includes('@') || !campos.senha) {
       return NextResponse.json({ error: 'Informe e-mail e senha.' }, { status: 400 });
     }
 

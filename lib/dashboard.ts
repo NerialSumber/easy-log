@@ -1,5 +1,7 @@
+import { unidadeDoItem } from '@/lib/estoque';
+import { formatarNumero } from '@/lib/formatos';
 import { rotuloStatus } from '@/lib/status-projeto';
-import type { StatusProjeto } from '@/lib/types';
+import type { Categoria, ItemEstoque, StatusProjeto } from '@/lib/types';
 
 export type ProjetoDashboard = {
   id: string;
@@ -13,15 +15,7 @@ export type ProjetoDashboard = {
   clienteNome: string | null;
 };
 
-export type ItemEstoqueDashboard = {
-  id: string;
-  nome: string;
-  quantidade: number;
-  unidade: string;
-  categoria: 'MADEIRA' | 'QUIMICO' | 'EPI';
-};
-
-export type AlertaDashboard = {
+type Alerta = {
   id: string;
   nivel: 'critico' | 'atencao';
   titulo: string;
@@ -43,16 +37,14 @@ export type DashboardDados = {
     nivelEstoque: 'ok' | 'atencao' | 'critico' | null;
   };
   porStatus: { status: StatusProjeto; rotulo: string; quantidade: number; cor: string }[];
-  madeiraPorMes: { chave: string; rotulo: string; madeira: number; projetos: number }[];
-  projetosPorMes: {
+  meses: {
     chave: string;
     rotulo: string;
+    madeira: number;
     iniciados: number;
     finalizados: number;
   }[];
-  maisFeitos: { nome: string; quantidade: number }[];
-  alertas: AlertaDashboard[];
-  totalAlertas: number;
+  alertas: Alerta[];
   recentes: {
     id: string;
     codigo: string;
@@ -72,78 +64,14 @@ const COR_STATUS: Record<StatusProjeto, string> = {
   CONCLUIDO: 'var(--muted)',
 };
 
-const ROTULO_CATEGORIA: Record<ItemEstoqueDashboard['categoria'], string> = {
+const ROTULO_CATEGORIA: Record<Categoria, string> = {
   MADEIRA: 'Madeira',
   QUIMICO: 'Produto químico',
   EPI: 'EPI',
 };
 
-function limiteEstoqueBaixo(item: ItemEstoqueDashboard) {
-  if (item.categoria === 'MADEIRA') return 5;
-  if (item.categoria === 'EPI') return 5;
-
-  const unidade = item.unidade.trim().toLowerCase();
-  if (unidade.startsWith('mililit') || unidade === 'ml') return 500;
-  if (unidade === 'gramas' || unidade === 'g') return 500;
-  if (unidade.startsWith('cent')) return 100;
-  return 2;
-}
-
-function unidadeExibida(item: ItemEstoqueDashboard) {
-  if (item.categoria === 'MADEIRA') return 'm²';
-  if (item.categoria === 'EPI') return 'un.';
-  return item.unidade;
-}
-
-function alertasDeMadeira(
-  ativos: ProjetoDashboard[],
-  madeiraEstoque: number,
-  limiteFolga: number,
-) {
-  const fila = ativos
-    .filter((projeto) => projeto.qtdeMadeira > 0)
-    .sort((a, b) => {
-      const fimA = paraData(a.dataFim)?.getTime() ?? Number.POSITIVE_INFINITY;
-      const fimB = paraData(b.dataFim)?.getTime() ?? Number.POSITIVE_INFINITY;
-      return fimA - fimB || a.nome.localeCompare(b.nome, 'pt-BR');
-    });
-
-  const alertas: AlertaDashboard[] = [];
-  let restante = madeiraEstoque;
-  let avisouFolga = false;
-
-  for (const projeto of fila) {
-    if (restante < projeto.qtdeMadeira) {
-      const falta = Math.round((projeto.qtdeMadeira - Math.max(restante, 0)) * 100) / 100;
-      alertas.push({
-        id: `madeira-${projeto.id}`,
-        nivel: 'critico',
-        titulo: `Não há madeira suficiente para completar o projeto ${projeto.nome}.`,
-        detalhe: `Faltam ${formatarMadeira(falta)} m².`,
-        href: '/estoque',
-      });
-      restante = 0;
-      avisouFolga = true;
-      continue;
-    }
-
-    restante = Math.round((restante - projeto.qtdeMadeira) * 100) / 100;
-    if (!avisouFolga && restante <= limiteFolga) {
-      alertas.push({
-        id: `madeira-${projeto.id}`,
-        nivel: 'atencao',
-        titulo: `Pouca madeira para completar o projeto ${projeto.nome}.`,
-        detalhe:
-          restante === 0
-            ? 'Não sobra madeira no estoque depois deste projeto.'
-            : `Sobram ${formatarMadeira(restante)} m² no estoque.`,
-        href: '/estoque',
-      });
-      avisouFolga = true;
-    }
-  }
-
-  return alertas;
+function arredondar(valor: number) {
+  return Math.round(valor * 100) / 100;
 }
 
 function paraData(valor: Date | string | null | undefined) {
@@ -156,74 +84,120 @@ function inicioDoDia(data: Date) {
   return new Date(data.getFullYear(), data.getMonth(), data.getDate());
 }
 
-function somarDias(data: Date, dias: number) {
-  const copia = new Date(data);
-  copia.setDate(copia.getDate() + dias);
-  return inicioDoDia(copia);
-}
-
 function formatarDataCurta(data: Date) {
   return new Intl.DateTimeFormat('pt-BR').format(data);
-}
-
-function formatarMadeira(valor: number) {
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(valor);
-}
-
-function estaAtrasado(projeto: ProjetoDashboard, hoje: Date) {
-  if (projeto.status === 'CONCLUIDO') return false;
-  if (projeto.status === 'ATRASADO') return true;
-  const fim = paraData(projeto.dataFim);
-  if (!fim) return false;
-  return inicioDoDia(fim).getTime() < hoje.getTime();
-}
-
-function entregaProxima(projeto: ProjetoDashboard, hoje: Date, limite: Date) {
-  if (projeto.status === 'CONCLUIDO' || estaAtrasado(projeto, hoje)) return false;
-  const fim = paraData(projeto.dataFim);
-  if (!fim) return false;
-  const dia = inicioDoDia(fim).getTime();
-  return dia >= hoje.getTime() && dia <= limite.getTime();
-}
-
-function mesesRecentes(hoje: Date, quantidade: number) {
-  return Array.from({ length: quantidade }, (_, indice) => {
-    const data = new Date(
-      hoje.getFullYear(),
-      hoje.getMonth() - (quantidade - 1 - indice),
-      1,
-    );
-    const chave = chaveMes(data);
-    return { chave, rotulo: rotuloMes(data), madeira: 0, projetos: 0 };
-  });
 }
 
 function chaveMes(data: Date) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function rotuloMes(data: Date) {
-  return new Intl.DateTimeFormat('pt-BR', { month: 'short' })
-    .format(data)
-    .replace('.', '');
+function ultimosMeses(hoje: Date, quantidade: number) {
+  return Array.from({ length: quantidade }, (_, indice) => {
+    const data = new Date(
+      hoje.getFullYear(),
+      hoje.getMonth() - (quantidade - 1 - indice),
+      1,
+    );
+    return {
+      chave: chaveMes(data),
+      rotulo: new Intl.DateTimeFormat('pt-BR', { month: 'short' })
+        .format(data)
+        .replace('.', ''),
+      madeira: 0,
+      iniciados: 0,
+      finalizados: 0,
+    };
+  });
+}
+
+function limiteEstoqueBaixo(item: ItemEstoque) {
+  if (item.categoria !== 'QUIMICO') return 5;
+  const unidade = item.unidade.trim().toLowerCase();
+  if (unidade.startsWith('mililit') || unidade === 'ml') return 500;
+  if (unidade === 'gramas' || unidade === 'g') return 500;
+  if (unidade.startsWith('cent')) return 100;
+  return 2;
+}
+
+function estaAtrasado(projeto: ProjetoDashboard, hoje: Date) {
+  if (projeto.status === 'CONCLUIDO') return false;
+  if (projeto.status === 'ATRASADO') return true;
+  const fim = paraData(projeto.dataFim);
+  return fim ? inicioDoDia(fim) < hoje : false;
+}
+
+function entregaProxima(projeto: ProjetoDashboard, hoje: Date, limite: Date) {
+  if (projeto.status === 'CONCLUIDO' || estaAtrasado(projeto, hoje)) return false;
+  const fim = paraData(projeto.dataFim);
+  if (!fim) return false;
+  const dia = inicioDoDia(fim);
+  return dia >= hoje && dia <= limite;
+}
+
+function alertasDeMadeira(ativos: ProjetoDashboard[], madeiraEstoque: number) {
+  const folgaMinima = Math.max(5, arredondar(madeiraEstoque * 0.1));
+  const fila = ativos
+    .filter((projeto) => projeto.qtdeMadeira > 0)
+    .sort((a, b) => {
+      const fimA = paraData(a.dataFim)?.getTime() ?? Infinity;
+      const fimB = paraData(b.dataFim)?.getTime() ?? Infinity;
+      return fimA - fimB || a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+  const alertas: Alerta[] = [];
+  let restante = madeiraEstoque;
+  let avisou = false;
+
+  for (const projeto of fila) {
+    if (restante < projeto.qtdeMadeira) {
+      const falta = arredondar(projeto.qtdeMadeira - Math.max(restante, 0));
+      alertas.push({
+        id: `madeira-${projeto.id}`,
+        nivel: 'critico',
+        titulo: `Não há madeira suficiente para completar o projeto ${projeto.nome}.`,
+        detalhe: `Faltam ${formatarNumero(falta)} m².`,
+        href: '/estoque',
+      });
+      restante = 0;
+      avisou = true;
+      continue;
+    }
+
+    restante = arredondar(restante - projeto.qtdeMadeira);
+    if (!avisou && restante <= folgaMinima) {
+      alertas.push({
+        id: `madeira-${projeto.id}`,
+        nivel: 'atencao',
+        titulo: `Pouca madeira para completar o projeto ${projeto.nome}.`,
+        detalhe:
+          restante === 0
+            ? 'Não sobra madeira no estoque depois deste projeto.'
+            : `Sobram ${formatarNumero(restante)} m² no estoque.`,
+        href: '/estoque',
+      });
+      avisou = true;
+    }
+  }
+
+  return alertas;
 }
 
 export function montarDashboard(
   projetos: ProjetoDashboard[],
-  estoque: ItemEstoqueDashboard[] | null,
+  estoque: ItemEstoque[] | null,
   agora = new Date(),
 ): DashboardDados {
   const hoje = inicioDoDia(agora);
-  const limiteEntrega = somarDias(hoje, 7);
+  const limiteEntrega = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 7);
+  const ativos = projetos.filter((projeto) => projeto.status !== 'CONCLUIDO');
   const atrasados = projetos.filter((projeto) => estaAtrasado(projeto, hoje));
   const entregas = projetos.filter((projeto) =>
     entregaProxima(projeto, hoje, limiteEntrega),
   );
-  const ativos = projetos.filter((projeto) => projeto.status !== 'CONCLUIDO');
-  const madeiraAtiva =
-    Math.round(
-      ativos.reduce((total, projeto) => total + (projeto.qtdeMadeira || 0), 0) * 100,
-    ) / 100;
+  const madeiraAtiva = arredondar(
+    ativos.reduce((total, projeto) => total + (projeto.qtdeMadeira || 0), 0),
+  );
 
   const porStatus = STATUS_ORDEM.map((status) => ({
     status,
@@ -232,70 +206,40 @@ export function montarDashboard(
     cor: COR_STATUS[status],
   }));
 
-  const madeiraPorMes = mesesRecentes(hoje, 6);
-  const projetosPorMes = madeiraPorMes.map((mes) => ({
-    chave: mes.chave,
-    rotulo: mes.rotulo,
-    iniciados: 0,
-    finalizados: 0,
-  }));
-  const indiceMes = new Map(madeiraPorMes.map((mes, indice) => [mes.chave, indice]));
+  const meses = ultimosMeses(hoje, 6);
+  const mesPorChave = new Map(meses.map((mes) => [mes.chave, mes]));
   for (const projeto of projetos) {
-    const referencia = paraData(projeto.dataInicio) ?? paraData(projeto.criadoEm);
-    if (referencia) {
-      const indice = indiceMes.get(chaveMes(referencia));
-      if (indice !== undefined) {
-        madeiraPorMes[indice].madeira += projeto.qtdeMadeira || 0;
-        madeiraPorMes[indice].projetos += 1;
-        projetosPorMes[indice].iniciados += 1;
-      }
+    const inicio = paraData(projeto.dataInicio) ?? paraData(projeto.criadoEm);
+    const mesInicio = inicio && mesPorChave.get(chaveMes(inicio));
+    if (mesInicio) {
+      mesInicio.madeira += projeto.qtdeMadeira || 0;
+      mesInicio.iniciados += 1;
     }
 
     const fim = paraData(projeto.dataFim);
-    if (projeto.status === 'CONCLUIDO' && fim) {
-      const indiceFim = indiceMes.get(chaveMes(fim));
-      if (indiceFim !== undefined) projetosPorMes[indiceFim].finalizados += 1;
-    }
+    const mesFim =
+      projeto.status === 'CONCLUIDO' && fim && mesPorChave.get(chaveMes(fim));
+    if (mesFim) mesFim.finalizados += 1;
   }
-  for (const mes of madeiraPorMes) {
-    mes.madeira = Math.round(mes.madeira * 100) / 100;
-  }
-
-  const contagem = new Map<string, { nome: string; quantidade: number }>();
-  for (const projeto of projetos) {
-    const nome = projeto.nome.trim();
-    const chave = nome.toLowerCase();
-    if (!chave) continue;
-    const atual = contagem.get(chave);
-    if (atual) atual.quantidade += 1;
-    else contagem.set(chave, { nome, quantidade: 1 });
-  }
-  const maisFeitos = [...contagem.values()]
-    .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome, 'pt-BR'))
-    .slice(0, 5);
+  for (const mes of meses) mes.madeira = arredondar(mes.madeira);
 
   const itensZerados = estoque?.filter((item) => item.quantidade <= 0) ?? [];
   const itensBaixos =
-    estoque?.filter((item) => {
-      if (item.quantidade <= 0) return false;
-      return item.quantidade <= limiteEstoqueBaixo(item);
-    }) ?? [];
+    estoque?.filter(
+      (item) => item.quantidade > 0 && item.quantidade <= limiteEstoqueBaixo(item),
+    ) ?? [];
   const madeiraEstoque =
     estoque === null
       ? null
-      : Math.round(
+      : arredondar(
           estoque
             .filter((item) => item.categoria === 'MADEIRA')
-            .reduce((total, item) => total + item.quantidade, 0) * 100,
-        ) / 100;
-  const limiteFolga =
-    madeiraEstoque === null
-      ? 0
-      : Math.max(5, Math.round(madeiraEstoque * 0.1 * 100) / 100);
+            .reduce((total, item) => total + item.quantidade, 0),
+        );
   const alertasMadeira =
-    madeiraEstoque === null ? [] : alertasDeMadeira(ativos, madeiraEstoque, limiteFolga);
+    madeiraEstoque === null ? [] : alertasDeMadeira(ativos, madeiraEstoque);
 
-  const alertas: AlertaDashboard[] = [];
+  const alertas: Alerta[] = [];
 
   for (const projeto of atrasados) {
     const fim = paraData(projeto.dataFim);
@@ -311,9 +255,7 @@ export function montarDashboard(
     });
   }
 
-  for (const alerta of alertasMadeira) {
-    if (alerta.nivel === 'critico') alertas.push(alerta);
-  }
+  alertas.push(...alertasMadeira.filter((alerta) => alerta.nivel === 'critico'));
 
   for (const item of itensZerados) {
     alertas.push({
@@ -325,30 +267,27 @@ export function montarDashboard(
     });
   }
 
-  for (const alerta of alertasMadeira) {
-    if (alerta.nivel === 'atencao') alertas.push(alerta);
-  }
+  alertas.push(...alertasMadeira.filter((alerta) => alerta.nivel === 'atencao'));
 
   for (const item of itensBaixos) {
     alertas.push({
       id: `estoque-baixo-${item.id}`,
       nivel: 'atencao',
       titulo: `O item ${item.nome} está com estoque baixo.`,
-      detalhe: `Restam ${formatarMadeira(item.quantidade)} ${unidadeExibida(item).replace(/\.$/, '')}.`,
+      detalhe: `Restam ${formatarNumero(item.quantidade)} ${unidadeDoItem(item).replace(/\.$/, '')}.`,
       href: '/estoque',
     });
   }
 
   for (const projeto of entregas) {
     const fim = paraData(projeto.dataFim);
-    const cliente = projeto.clienteNome ? ` Cliente ${projeto.clienteNome}.` : '';
     alertas.push({
       id: `entrega-${projeto.id}`,
       nivel: 'atencao',
       titulo: fim
         ? `O projeto ${projeto.nome} deve ser entregue até ${formatarDataCurta(fim)}.`
         : `O projeto ${projeto.nome} deve ser entregue nesta semana.`,
-      detalhe: cliente.trim(),
+      detalhe: projeto.clienteNome ? `Cliente ${projeto.clienteNome}.` : '',
       href: '/projetos',
     });
   }
@@ -368,6 +307,17 @@ export function montarDashboard(
       criadoEm: (paraData(projeto.criadoEm) ?? agora).toISOString(),
     }));
 
+  let nivelEstoque: DashboardDados['resumo']['nivelEstoque'] = null;
+  if (estoque !== null) {
+    if (itensZerados.length > 0 || alertasMadeira.some((a) => a.nivel === 'critico')) {
+      nivelEstoque = 'critico';
+    } else if (itensBaixos.length > 0 || alertasMadeira.length > 0) {
+      nivelEstoque = 'atencao';
+    } else {
+      nivelEstoque = 'ok';
+    }
+  }
+
   return {
     podeVerEstoque: estoque !== null,
     resumo: {
@@ -382,22 +332,11 @@ export function montarDashboard(
         estoque === null
           ? null
           : itensZerados.length + itensBaixos.length + alertasMadeira.length,
-      nivelEstoque:
-        estoque === null
-          ? null
-          : itensZerados.length > 0 ||
-              alertasMadeira.some((alerta) => alerta.nivel === 'critico')
-            ? 'critico'
-            : itensBaixos.length > 0 || alertasMadeira.length > 0
-              ? 'atencao'
-              : 'ok',
+      nivelEstoque,
     },
     porStatus,
-    madeiraPorMes,
-    projetosPorMes,
-    maisFeitos,
+    meses,
     alertas,
-    totalAlertas: alertas.length,
     recentes,
   };
 }

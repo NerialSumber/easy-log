@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useSyncExternalStore } from 'react';
-import { normalizarRole, pode, rotuloRole, type Acao, type Area, type Role } from '@/lib/permissoes';
+import { requisitar } from '@/lib/api';
+import { pode, rotuloRole, type Acao, type Area, type Role } from '@/lib/permissoes';
+import type { Usuario } from '@/lib/types';
 
 export type UserData = {
   id: string;
@@ -12,16 +14,10 @@ export type UserData = {
   iniciais: string;
 };
 
-type StoredUser = {
-  nome?: string;
-  email?: string;
-  password?: string;
-  role?: string;
-};
+const CHAVE = 'current_user';
+const EVENTO = 'easylog-user';
 
-const USER_CHANGED_EVENT = 'current-user-changed';
-
-const GUEST: UserData = {
+const VISITANTE: UserData = {
   id: '',
   nome: 'Carregando...',
   email: '',
@@ -30,141 +26,82 @@ const GUEST: UserData = {
   iniciais: '--',
 };
 
-let cachedRaw: string | null | undefined;
-let cachedUser: UserData = GUEST;
-
-function subscribe(onStoreChange: () => void) {
-  const onChange = () => {
-    cachedRaw = undefined;
-    onStoreChange();
-  };
-
-  window.addEventListener('storage', onChange);
-  window.addEventListener('easylog-user', onChange);
-  return () => {
-    window.removeEventListener('storage', onChange);
-    window.removeEventListener('easylog-user', onChange);
-  };
-}
+let ultimoTexto: string | null = null;
+let ultimoUsuario = VISITANTE;
 
 function iniciaisDe(nome: string) {
-  const partes = nome.trim().split(' ');
+  const partes = nome.trim().split(/\s+/);
   if (partes.length >= 2) {
     return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
   }
-  if (partes[0].length >= 2) {
-    return partes[0].substring(0, 2).toUpperCase();
-  }
-  return partes[0].toUpperCase();
+  return partes[0].slice(0, 2).toUpperCase();
 }
 
-function readStoredUser(): StoredUser | null {
-  const stored = localStorage.getItem('current_user');
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored) as StoredUser;
-  } catch {
-    return null;
-  }
-}
+function lerUsuario() {
+  const texto = localStorage.getItem(CHAVE);
+  if (texto === ultimoTexto) return ultimoUsuario;
 
-function notifyUserChange() {
-  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
-}
-
-function readUser(): UserData {
-  const stored = localStorage.getItem('current_user');
-  if (stored === cachedRaw) {
-    return cachedUser;
-  }
-
-  cachedRaw = stored;
-  if (!stored) {
-    cachedUser = GUEST;
-    return cachedUser;
-  }
+  ultimoTexto = texto;
+  ultimoUsuario = VISITANTE;
+  if (!texto) return ultimoUsuario;
 
   try {
-    const parsed = JSON.parse(stored) as {
-      id?: string;
-      nome?: string;
-      email?: string;
-      role?: string;
-      roleLabel?: string;
-    };
-    const nome = parsed.nome || 'Usuário';
-    const role = normalizarRole(parsed.role);
-    cachedUser = {
-      id: parsed.id || '',
+    const sessao = JSON.parse(texto) as Partial<Usuario>;
+    const role =
+      sessao.role === 'ADMIN' || sessao.role === 'PROJETISTA' ? sessao.role : '';
+    const nome = sessao.nome || 'Usuário';
+    ultimoUsuario = {
+      id: sessao.id || '',
       nome,
-      email: parsed.email || '',
+      email: sessao.email || '',
       role,
-      roleLabel: parsed.roleLabel || (role ? rotuloRole(role) : 'Usuário'),
+      roleLabel: role ? rotuloRole(role) : 'Usuário',
       iniciais: iniciaisDe(nome),
     };
   } catch {
-    cachedUser = GUEST;
+    ultimoUsuario = VISITANTE;
   }
-
-  return cachedUser;
+  return ultimoUsuario;
 }
 
-export function senhaAtualConfere(senha: string) {
-  const atual = readStoredUser();
-  return Boolean(atual?.password && atual.password === senha);
+function observar(aoMudar: () => void) {
+  window.addEventListener('storage', aoMudar);
+  window.addEventListener(EVENTO, aoMudar);
+  return () => {
+    window.removeEventListener('storage', aoMudar);
+    window.removeEventListener(EVENTO, aoMudar);
+  };
 }
 
-export function persistirDadosUsuario(updates: { nome?: string; email?: string; password?: string }) {
-  const atual = readStoredUser();
-  if (!atual) return;
+export function salvarSessao(usuario: Usuario) {
+  localStorage.setItem(CHAVE, JSON.stringify(usuario));
+  window.dispatchEvent(new Event(EVENTO));
+}
 
-  const atualizado = { ...atual, ...updates };
-  localStorage.setItem('current_user', JSON.stringify(atualizado));
-
-  const users = JSON.parse(localStorage.getItem('fake_users') || '[]') as StoredUser[];
-  const index = users.findIndex((user) => user.email === atual.email);
-  if (index >= 0) {
-    users[index] = { ...users[index], ...updates };
-    localStorage.setItem('fake_users', JSON.stringify(users));
-  }
-
-  notifyUserChange();
+export async function sair() {
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
+  localStorage.removeItem(CHAVE);
+  window.location.href = '/login';
 }
 
 export function useCurrentUser() {
-  const user = useSyncExternalStore(subscribe, readUser, () => GUEST);
+  const usuario = useSyncExternalStore(observar, lerUsuario, () => VISITANTE);
 
   useEffect(() => {
-    let cancelado = false;
-
-    fetch('/api/auth/me', { cache: 'no-store' })
-      .then(async (res) => {
-        const data: unknown = await res.json();
-        if (!res.ok) throw new Error('unauth');
-        return data as { nome?: string; email?: string; role?: string; roleLabel?: string };
-      })
-      .then((data) => {
-        if (cancelado) return;
-        localStorage.setItem('current_user', JSON.stringify(data));
-        window.dispatchEvent(new Event('easylog-user'));
-      })
+    requisitar<Usuario>('/api/auth/me')
+      .then(salvarSessao)
       .catch(() => {
-        if (cancelado) return;
-        localStorage.removeItem('current_user');
+        localStorage.removeItem(CHAVE);
         window.location.href = '/login';
       });
-
-    return () => {
-      cancelado = true;
-    };
   }, []);
 
-  return user;
+  return usuario;
 }
 
 export function useExigirPermissao(area: Area, acao: Acao = 'ver') {
   const user = useCurrentUser();
-  const pronto = user.role === 'ADMIN' || user.role === 'PROJETISTA';
+  const pronto = user.role !== '';
   const permitido = pode(user.role, area, acao);
 
   useEffect(() => {
