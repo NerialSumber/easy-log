@@ -6,14 +6,16 @@ Sistema web para controle de uma marcenaria: projetos, estoque, fornecedores e u
 
 ## Funcionalidades
 
-- **Visão geral:** projetos ativos, atrasos, entregas da semana, gráficos por mês e alertas de estoque.
+- **Visão geral:** projetos ativos, atrasos, entregas da semana, madeira em uso, gráficos por mês e alertas de estoque.
 - **Projetos:** lista de pedidos com busca e filtros, catálogo dos modelos mais feitos, edição e conclusão. Cada projeto informa o tipo e a quantidade de madeira.
-- **Estoque:** madeira, produtos químicos e EPIs, com registro de entradas e saídas. Ao concluir um projeto, a madeira usada é descontada do estoque automaticamente.
+- **Estoque:** madeira, produtos químicos e EPIs, com registro de entradas e saídas. A aba de madeira mostra quanto está reservado para os projetos ativos. Ao concluir um projeto, a madeira usada é descontada do estoque automaticamente.
 - **Fornecedores:** contatos, endereço e produtos de cada fornecedor.
 - **Usuários:** cadastro de acessos com dois perfis, Administrador e Projetista.
 - **Minha conta:** alterar nome, e-mail e senha, tema noturno e fonte maior.
 
 O Projetista vê o painel, os fornecedores e trabalha nos projetos. Estoque e usuários são exclusivos do Administrador.
+
+Todas as telas funcionam no celular, no tablet e no computador, com ou sem o tema noturno e a fonte maior. Em telas menores, o menu lateral vira um botão no topo da página.
 
 ## Como rodar
 
@@ -41,6 +43,30 @@ npm run dev
 
 O sistema abre em [http://localhost:3000](http://localhost:3000).
 
+### Primeiro acesso
+
+Não existe tela de cadastro: as contas são criadas pelo Administrador em **Usuários**. Em um banco novo, crie o primeiro Administrador direto no banco.
+
+1. Gere a senha criptografada (troque `admin123` pela senha desejada):
+
+   ```bash
+   node -e "const c=require('crypto');const s=c.randomBytes(16).toString('hex');console.log(s+':'+c.scryptSync('admin123',s,64).toString('hex'))"
+   ```
+
+2. Rode `npm run db:studio`, abra a tabela **Usuario** e adicione uma linha com `nome`, `email`, `senha` (o texto gerado acima) e `role` igual a `ADMIN`.
+3. Entre no sistema com esse e-mail e a senha escolhida.
+
+### Atualizando o projeto
+
+Depois de puxar mudanças do repositório (`git pull`), rode de novo:
+
+```bash
+npm install
+npm run db:migrate
+```
+
+Assim o banco recebe as migrations novas, como a que liga cada projeto a um tipo de madeira.
+
 ### Variáveis de ambiente
 
 | Variável       | Obrigatória | Descrição                                                         |
@@ -52,16 +78,16 @@ No Neon, use a connection string **direta** (o host começa com `ep-` e não tem
 
 ## Rotas
 
-| Rota                | Tela                          |
-| ------------------- | ----------------------------- |
-| `/login`            | Entrada no sistema            |
-| `/`                 | Visão geral                   |
-| `/projetos`         | Pedidos e catálogo            |
-| `/projetos/novo`    | Novo projeto                  |
-| `/estoque`          | Controle de estoque           |
-| `/fornecedores`     | Lista de fornecedores         |
-| `/fornecedores/novo`| Novo fornecedor               |
-| `/usuarios`         | Gerenciamento de usuários     |
+| Rota                 | Tela                      |
+| -------------------- | ------------------------- |
+| `/login`             | Entrada no sistema        |
+| `/`                  | Visão geral               |
+| `/projetos`          | Pedidos e catálogo        |
+| `/projetos/novo`     | Novo projeto              |
+| `/estoque`           | Controle de estoque       |
+| `/fornecedores`      | Lista de fornecedores     |
+| `/fornecedores/novo` | Novo fornecedor           |
+| `/usuarios`          | Gerenciamento de usuários |
 
 ## Estrutura de pastas
 
@@ -89,6 +115,7 @@ easy-log/
 │   └── api/                  # Rotas do backend (uma pasta por recurso)
 ├── components/               # Peças usadas em várias telas
 │   ├── app-shell.tsx         # Layout com menu lateral e rodapé
+│   ├── menu-mobile.tsx       # Menu do topo em celulares e tablets
 │   ├── modal.tsx             # Janela modal padrão
 │   ├── campo.tsx             # Campo de formulário e estilos de botão
 │   ├── abas.tsx
@@ -129,3 +156,5 @@ O editor já vem configurado em `.vscode/` para formatar ao salvar. As extensõe
 **Erro de conexão com o banco:** copie a connection string inteira do painel do Neon e verifique se o projeto não está suspenso por inatividade.
 
 **`@prisma/client` não encontrado:** rode `npm run db:generate`.
+
+**Não consigo concluir um projeto:** o projeto precisa ter um tipo de madeira escolhido, e esse tipo precisa ter quantidade suficiente no estoque. A mensagem na janela do projeto diz qual dos dois falta.

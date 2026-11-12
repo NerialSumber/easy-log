@@ -16,7 +16,7 @@ import { DetalheFornecedor } from './_components/detalhe-fornecedor';
 import { FornecedorForm, paraFormulario } from './_components/fornecedor-form';
 
 const classeCabecalho =
-  'text-muted px-6 py-3 text-left text-xs font-bold tracking-[0.72px] uppercase';
+  'text-muted px-4 py-3 sm:px-6 text-left text-xs font-bold tracking-[0.72px] uppercase';
 
 function filtrar(fornecedores: FornecedorLista[], busca: string) {
   const termo = busca.trim().toLowerCase();
@@ -87,7 +87,7 @@ export default function FornecedoresPage() {
       }
     >
       <div className="flex flex-col gap-6">
-        <label className="border-line flex w-full max-w-[520px] items-center gap-2 rounded-lg border px-3 py-2">
+        <label className="border-line flex w-full max-w-lg items-center gap-2 rounded-lg border px-3 py-2">
           <Search className="text-faint size-5 shrink-0" />
           <input
             type="search"
@@ -99,18 +99,20 @@ export default function FornecedoresPage() {
           />
         </label>
 
-        <div className="border-line bg-surface overflow-hidden rounded-xl border">
+        <div className="border-line bg-surface overflow-x-auto rounded-xl border">
           <table className="min-w-full">
             <thead className="bg-soft">
               <tr className="border-line border-b">
                 <th className={classeCabecalho}>Nome</th>
-                <th className={classeCabecalho}>Contato</th>
+                <th className={`${classeCabecalho} hidden text-right sm:table-cell`}>
+                  Contato
+                </th>
               </tr>
             </thead>
             <tbody>
               {aviso ? (
                 <tr>
-                  <td colSpan={2} className="text-muted px-6 py-4 text-center">
+                  <td colSpan={2} className="text-muted px-4 py-4 text-center sm:px-6">
                     {aviso}
                   </td>
                 </tr>
@@ -121,16 +123,26 @@ export default function FornecedoresPage() {
                     onClick={() => setDetalhe(fornecedor)}
                     className="border-line hover:bg-soft cursor-pointer border-b last:border-b-0"
                   >
-                    <td className="text-ink px-6 py-4 text-sm font-medium">
-                      {fornecedor.nome}
-                    </td>
-                    <td className="text-muted px-6 py-4 text-sm">
-                      <div className="flex flex-col items-end gap-1">
+                    <td className="px-4 py-4 sm:px-6">
+                      <p className="text-ink text-sm font-medium">{fornecedor.nome}</p>
+                      <div className="text-muted mt-1 flex flex-col gap-0.5 text-xs sm:hidden">
+                        <span className="break-all">
+                          {fornecedor.email || 'Sem e-mail'}
+                        </span>
                         <span>
+                          {fornecedor.telefone
+                            ? formatarTelefone(fornecedor.telefone)
+                            : 'Sem telefone'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="text-muted hidden px-4 py-4 text-sm sm:table-cell sm:px-6">
+                      <div className="flex flex-col items-end gap-1 text-right">
+                        <span className="break-all">
                           <strong className="text-ink font-semibold">E-mail:</strong>{' '}
                           {fornecedor.email || '—'}
                         </span>
-                        <span>
+                        <span className="whitespace-nowrap">
                           <strong className="text-ink font-semibold">Telefone:</strong>{' '}
                           {fornecedor.telefone
                             ? formatarTelefone(fornecedor.telefone)
@@ -165,7 +177,7 @@ export default function FornecedoresPage() {
           largura="max-w-2xl"
           onFechar={() => setEditando(null)}
         >
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <FornecedorForm
               inicial={paraFormulario(editando)}
               onCancelar={() => setEditando(null)}

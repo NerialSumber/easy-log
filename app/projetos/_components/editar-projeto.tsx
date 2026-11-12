@@ -71,7 +71,7 @@ export function EditarProjeto({
   return (
     <Modal titulo="Editar projeto" largura="max-w-2xl" onFechar={onFechar}>
       <form onSubmit={salvar}>
-        <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 p-4 sm:p-6 md:grid-cols-2">
           <div>
             <p className="text-ink mb-2 text-sm font-bold">Código</p>
             <p className="bg-soft text-ink rounded-lg px-4 py-3 text-sm">

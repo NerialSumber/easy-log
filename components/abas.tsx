@@ -12,7 +12,7 @@ export function Abas<T extends string>({ abas, ativa, rotulo, onTrocar }: AbasPr
     <div
       role="tablist"
       aria-label={rotulo}
-      className={`grid grid-cols-1 gap-3 ${abas.length > 2 ? 'md:grid-cols-3' : 'sm:grid-cols-2'}`}
+      className={`grid gap-2 sm:gap-3 ${abas.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}
     >
       {abas.map((aba) => {
         const selecionada = aba.id === ativa;
@@ -23,18 +23,18 @@ export function Abas<T extends string>({ abas, ativa, rotulo, onTrocar }: AbasPr
             role="tab"
             aria-selected={selecionada}
             onClick={() => onTrocar(aba.id)}
-            className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
+            className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors sm:p-4 ${
               selecionada
                 ? 'border-accent bg-soft'
                 : 'border-line bg-surface hover:border-accent'
             }`}
           >
             <span
-              className={`text-base font-bold ${selecionada ? 'text-accent' : 'text-ink'}`}
+              className={`text-sm font-bold sm:text-base ${selecionada ? 'text-accent' : 'text-ink'}`}
             >
               {aba.titulo}
             </span>
-            <span className="text-muted text-xs">{aba.descricao}</span>
+            <span className="text-muted hidden text-xs sm:block">{aba.descricao}</span>
           </button>
         );
       })}

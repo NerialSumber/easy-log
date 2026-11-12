@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AppFooter } from '@/components/app-footer';
 import { AppSidebar, type NavKey } from '@/components/app-sidebar';
+import { MenuMobile } from '@/components/menu-mobile';
 
 type AppShellProps = {
   active: NavKey;
@@ -11,16 +12,17 @@ type AppShellProps = {
 
 export function AppShell({ active, header, children, canvas = false }: AppShellProps) {
   return (
-    <div className="bg-canvas relative flex min-h-screen flex-col">
-      <div className="flex min-h-0 flex-1">
+    <div className="bg-canvas flex min-h-dvh flex-col">
+      <div className="flex flex-1">
         <AppSidebar active={active} />
         <div className="flex min-w-0 flex-1 flex-col">
+          <MenuMobile active={active} />
           {header}
-          <div
-            className={`flex-1 overflow-auto p-8 ${canvas ? 'bg-canvas' : 'bg-surface'}`}
+          <main
+            className={`min-w-0 flex-1 p-4 sm:p-6 lg:p-8 ${canvas ? 'bg-canvas' : 'bg-surface'}`}
           >
             {children}
-          </div>
+          </main>
         </div>
       </div>
       <AppFooter />

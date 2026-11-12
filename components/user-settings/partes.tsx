@@ -19,7 +19,7 @@ export function Rodape({
   onCancelar: () => void;
 }) {
   return (
-    <div className="border-line flex justify-end gap-3 border-t pt-5">
+    <div className="border-line flex flex-wrap justify-end gap-3 border-t pt-5">
       <button type="button" onClick={onCancelar} className={classeBotaoSecundario}>
         Cancelar
       </button>

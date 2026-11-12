@@ -78,9 +78,11 @@ function FormularioNovoProjeto() {
       }
     >
       <div className="border-line bg-surface overflow-hidden rounded-xl border">
-        <h2 className="text-ink p-6 text-lg leading-7 font-bold">Detalhes do Projeto</h2>
+        <h2 className="text-ink p-4 text-lg leading-7 font-bold sm:p-6">
+          Detalhes do Projeto
+        </h2>
 
-        <form onSubmit={salvar} className="flex flex-col gap-4 p-6 pt-0">
+        <form onSubmit={salvar} className="flex flex-col gap-4 px-4 pb-4 sm:px-6 sm:pb-6">
           <ClienteField
             clientes={clientes}
             clienteId={clienteId}

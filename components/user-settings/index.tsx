@@ -48,7 +48,7 @@ function BotaoAba({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold transition ${
+      className={`flex shrink-0 items-center gap-2 border-b-2 px-4 pb-3 text-sm font-semibold whitespace-nowrap transition ${
         ativa
           ? 'border-accent text-accent'
           : 'text-muted hover:text-ink border-transparent'
@@ -119,19 +119,22 @@ export function UserSettings({ className = '' }: { className?: string }) {
 
       {aberto
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4">
               <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="user-settings-title"
-                className="bg-surface w-full max-w-lg rounded-xl p-6"
+                className="bg-surface max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-xl p-4 sm:p-6"
               >
-                <div className="mb-6 flex items-start justify-between gap-4">
-                  <div>
+                <div className="mb-6 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-accent mb-1 text-xs font-semibold tracking-[0.14em] uppercase">
                       Minha conta
                     </p>
-                    <h2 id="user-settings-title" className="text-ink text-xl font-bold">
+                    <h2
+                      id="user-settings-title"
+                      className="text-ink text-lg font-bold sm:text-xl"
+                    >
                       Configurações do usuário
                     </h2>
                     <p className="text-muted mt-1 text-sm">{SUBTITULOS[modo]}</p>
@@ -146,7 +149,7 @@ export function UserSettings({ className = '' }: { className?: string }) {
                   </button>
                 </div>
 
-                <div className="border-line mb-6 flex border-b">
+                <div className="border-line mb-6 flex overflow-x-auto border-b">
                   <BotaoAba ativa={aba === 'usuario'} onClick={() => setAba('usuario')}>
                     <UserRound size={17} />
                     Usuário

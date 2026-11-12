@@ -30,7 +30,7 @@ export function DetalheFornecedor({
 }: DetalheFornecedorProps) {
   return (
     <Modal titulo="Detalhes do Fornecedor" largura="max-w-xl" onFechar={onFechar}>
-      <div className="flex flex-col gap-5 p-6">
+      <div className="flex flex-col gap-5 p-4 sm:p-6">
         <Info rotulo="Nome">{fornecedor.nome}</Info>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Info rotulo="Telefone">{fornecedor.telefone || '—'}</Info>

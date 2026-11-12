@@ -46,7 +46,7 @@ export function NovoItem({ categoria, onFechar, onCriado }: NovoItemProps) {
   return (
     <Modal titulo="Novo item" subtitulo={info.titulo} onFechar={onFechar}>
       <form onSubmit={salvar}>
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex flex-col gap-5 p-4 sm:p-6">
           <Campo rotulo={info.campo}>
             <input
               required

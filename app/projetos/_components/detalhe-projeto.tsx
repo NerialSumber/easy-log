@@ -82,7 +82,7 @@ export function DetalheProjeto({
 
   return (
     <Modal titulo="Detalhes do projeto" largura="max-w-2xl" onFechar={onFechar}>
-      <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 p-4 sm:p-6 md:grid-cols-2">
         <Info rotulo="Código">{projeto.codigo}</Info>
         <Info rotulo="Status">
           <span
@@ -106,7 +106,7 @@ export function DetalheProjeto({
       {erro ? (
         <p
           role="alert"
-          className="border-danger bg-danger-soft text-danger mx-6 mb-6 rounded-lg border px-4 py-3 text-sm"
+          className="border-danger bg-danger-soft text-danger mx-4 mb-4 rounded-lg border px-4 py-3 text-sm sm:mx-6 sm:mb-6"
         >
           {erro}
         </p>
@@ -114,7 +114,9 @@ export function DetalheProjeto({
 
       {pedido ? (
         <RodapeModal>
-          <p className="text-ink mr-auto self-center text-sm">{pergunta}</p>
+          <p className="text-ink basis-full text-sm sm:mr-auto sm:basis-auto">
+            {pergunta}
+          </p>
           <button
             type="button"
             disabled={ocupado}

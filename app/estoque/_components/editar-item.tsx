@@ -48,7 +48,7 @@ export function EditarItem({ item, onFechar, onSalvo }: EditarItemProps) {
       onFechar={onFechar}
     >
       <form onSubmit={salvar}>
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex flex-col gap-5 p-4 sm:p-6">
           <Campo rotulo={info.campo}>
             <input
               required

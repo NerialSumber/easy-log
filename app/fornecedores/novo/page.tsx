@@ -21,7 +21,7 @@ export default function NovoFornecedorPage() {
         />
       }
     >
-      <div className="border-line bg-surface overflow-hidden rounded-xl border p-6">
+      <div className="border-line bg-surface overflow-hidden rounded-xl border p-4 sm:p-6">
         <h2 className="text-ink mb-6 text-lg leading-7 font-bold">Dados do Fornecedor</h2>
         <FornecedorForm
           inicial={FORNECEDOR_VAZIO}

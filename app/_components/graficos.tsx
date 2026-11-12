@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
 import { formatarNumero } from '@/lib/formatos';
 
 type Ponto = {
@@ -27,7 +30,7 @@ export function GraficoRosca({
   let percorrido = 0;
 
   return (
-    <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-center">
+    <div className="flex flex-wrap items-center justify-center gap-8">
       <svg
         viewBox={`0 0 ${tamanho} ${tamanho}`}
         className="size-44 shrink-0"
@@ -70,7 +73,8 @@ export function GraficoRosca({
           x={centro}
           y={centro - 2}
           textAnchor="middle"
-          className="text-ink fill-current text-2xl font-medium"
+          fontSize="24"
+          className="text-ink fill-current font-medium"
         >
           {total}
         </text>
@@ -78,13 +82,14 @@ export function GraficoRosca({
           x={centro}
           y={centro + 18}
           textAnchor="middle"
-          className="text-muted fill-current text-[11px]"
+          fontSize="11"
+          className="text-muted fill-current"
         >
           {legendaCentro}
         </text>
       </svg>
 
-      <ul className="flex w-full flex-col gap-3">
+      <ul className="flex min-w-0 flex-1 basis-48 flex-col gap-3">
         {itens.map((item) => {
           const percentual = total === 0 ? 0 : Math.round((item.valor / total) * 100);
           return (
@@ -196,6 +201,23 @@ function caminhoSuave(pontos: { x: number; y: number }[]) {
   return desenho;
 }
 
+function useLargura<T extends HTMLElement>(inicial: number) {
+  const ref = useRef<T>(null);
+  const [largura, setLargura] = useState(inicial);
+
+  useEffect(() => {
+    const elemento = ref.current;
+    if (!elemento) return;
+    const observador = new ResizeObserver(([entrada]) => {
+      setLargura(Math.max(Math.round(entrada.contentRect.width), 240));
+    });
+    observador.observe(elemento);
+    return () => observador.disconnect();
+  }, []);
+
+  return [ref, largura] as const;
+}
+
 export function GraficoLinhas({
   rotulos,
   series,
@@ -203,9 +225,9 @@ export function GraficoLinhas({
   rotulos: string[];
   series: SerieLinha[];
 }) {
-  const largura = 720;
+  const [ref, largura] = useLargura<HTMLDivElement>(720);
   const altura = 260;
-  const margem = { topo: 18, direita: 16, base: 36, esquerda: 36 };
+  const margem = { topo: 18, direita: 16, base: 40, esquerda: 44 };
   const maior = Math.max(0, ...series.flatMap((serie) => serie.valores));
   const marcas = marcasEixo(maior);
   const topo = Math.max(marcas[marcas.length - 1] ?? 1, 1);
@@ -220,7 +242,7 @@ export function GraficoLinhas({
   const base = y(0);
 
   return (
-    <div>
+    <div ref={ref}>
       <ul className="mb-4 flex flex-wrap gap-2">
         {series.map((serie) => (
           <li key={serie.nome} className="text-muted flex items-center gap-2 text-sm">
@@ -234,7 +256,9 @@ export function GraficoLinhas({
       </ul>
       <svg
         viewBox={`0 0 ${largura} ${altura}`}
-        className="h-auto w-full"
+        width={largura}
+        height={altura}
+        className="block max-w-full"
         role="img"
         aria-label={series
           .map(
@@ -259,8 +283,7 @@ export function GraficoLinhas({
               x={margem.esquerda - 10}
               y={y(marca) + 4}
               textAnchor="end"
-              fontSize="12"
-              className="text-faint fill-current"
+              className="text-faint fill-current text-xs"
             >
               {marca}
             </text>
@@ -307,10 +330,9 @@ export function GraficoLinhas({
           <text
             key={rotulo}
             x={x(indice)}
-            y={altura - 10}
+            y={altura - 12}
             textAnchor="middle"
-            fontSize="12"
-            className="text-muted fill-current capitalize"
+            className="text-muted fill-current text-xs capitalize"
           >
             {rotulo}
           </text>

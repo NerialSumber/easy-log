@@ -36,14 +36,14 @@ function Interruptor({
       role="switch"
       aria-checked={ligado}
       onClick={onAlternar}
-      className="border-line hover:bg-soft flex w-full items-center justify-between rounded-lg border p-4 text-left transition"
+      className="border-line hover:bg-soft flex w-full items-center justify-between gap-4 rounded-lg border p-4 text-left transition"
     >
-      <span>
+      <span className="min-w-0">
         <span className="text-ink block text-sm font-semibold">{titulo}</span>
         <span className="text-muted mt-1 block text-xs">{descricao}</span>
       </span>
       <span
-        className={`relative h-6 w-11 rounded-full transition ${ligado ? 'bg-accent-fill' : 'bg-track'}`}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition ${ligado ? 'bg-accent-fill' : 'bg-track'}`}
       >
         <span
           className={`absolute top-1 size-4 rounded-full bg-white transition ${ligado ? 'left-6' : 'left-1'}`}

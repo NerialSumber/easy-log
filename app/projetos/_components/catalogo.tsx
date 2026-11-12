@@ -74,7 +74,7 @@ export function Catalogo({
   const maisFeito = modelos[0]?.vezes ?? 1;
 
   return (
-    <section className="border-line bg-surface rounded-md border p-6">
+    <section className="border-line bg-surface rounded-md border p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-ink text-base font-semibold">Catálogo de projetos</h2>

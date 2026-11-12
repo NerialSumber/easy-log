@@ -16,7 +16,7 @@ type PedidosProps = {
 function LinhaAviso({ texto }: { texto: string }) {
   return (
     <tr>
-      <td colSpan={4} className="text-muted px-6 py-12 text-center text-sm">
+      <td colSpan={4} className="text-muted px-4 py-12 text-center text-sm sm:px-6">
         {texto}
       </td>
     </tr>
@@ -92,63 +92,74 @@ export function Pedidos({ projetos, carregando, onAbrir }: PedidosProps) {
         </p>
       </div>
 
-      <table className="min-w-full">
-        <thead>
-          <tr className="border-line border-b">
-            <th className="text-faint px-6 py-3 text-left text-xs font-medium">
-              Projeto
-            </th>
-            <th className="text-faint w-[240px] px-6 py-3 text-left text-xs font-medium">
-              Período
-            </th>
-            <th className="text-faint px-6 py-3 text-left text-xs font-medium">
-              Cliente
-            </th>
-            <th className="text-faint w-[160px] px-6 py-3 text-right text-xs font-medium">
-              Status
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {carregando ? (
-            <LinhaAviso texto="Carregando projetos..." />
-          ) : filtrados.length === 0 ? (
-            <LinhaAviso
-              texto={
-                busca.trim()
-                  ? 'Nenhum projeto encontrado para esta busca.'
-                  : 'Nenhum projeto cadastrado.'
-              }
-            />
-          ) : (
-            filtrados.map((projeto) => (
-              <tr
-                key={projeto.id}
-                onClick={() => onAbrir(projeto)}
-                className="border-line hover:bg-soft cursor-pointer border-b last:border-b-0"
-              >
-                <td className="px-6 py-4">
-                  <p className="text-ink text-sm font-medium">{projeto.nome}</p>
-                  <p className="text-faint mt-0.5 text-xs">{projeto.codigo}</p>
-                </td>
-                <td className="text-muted w-[240px] px-6 py-4 text-sm whitespace-nowrap">
-                  {formatarPeriodo(projeto.dataInicio, projeto.dataFim)}
-                </td>
-                <td className="text-ink px-6 py-4 text-sm">
-                  {projeto.cliente?.nome ?? '—'}
-                </td>
-                <td className="w-[160px] px-6 py-4 text-right">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${classesStatus(projeto.status)}`}
-                  >
-                    {rotuloStatus(projeto.status)}
-                  </span>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-line border-b">
+              <th className="text-faint px-4 py-3 text-left text-xs font-medium sm:px-6">
+                Projeto
+              </th>
+              <th className="text-faint hidden px-4 py-3 text-left text-xs font-medium md:table-cell xl:px-6">
+                Período
+              </th>
+              <th className="text-faint hidden px-4 py-3 text-left text-xs font-medium md:table-cell xl:px-6">
+                Cliente
+              </th>
+              <th className="text-faint hidden w-px px-4 py-3 text-right text-xs font-medium whitespace-nowrap sm:table-cell xl:px-6">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <LinhaAviso texto="Carregando projetos..." />
+            ) : filtrados.length === 0 ? (
+              <LinhaAviso
+                texto={
+                  busca.trim()
+                    ? 'Nenhum projeto encontrado para esta busca.'
+                    : 'Nenhum projeto cadastrado.'
+                }
+              />
+            ) : (
+              filtrados.map((projeto) => (
+                <tr
+                  key={projeto.id}
+                  onClick={() => onAbrir(projeto)}
+                  className="border-line hover:bg-soft cursor-pointer border-b last:border-b-0"
+                >
+                  <td className="px-4 py-4 xl:px-6">
+                    <p className="text-ink text-sm font-medium">{projeto.nome}</p>
+                    <p className="text-faint mt-0.5 text-xs">{projeto.codigo}</p>
+                    <p className="text-muted mt-1 text-xs md:hidden">
+                      {formatarPeriodo(projeto.dataInicio, projeto.dataFim)}
+                      {projeto.cliente ? ` · ${projeto.cliente.nome}` : ''}
+                    </p>
+                    <span
+                      className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium sm:hidden ${classesStatus(projeto.status)}`}
+                    >
+                      {rotuloStatus(projeto.status)}
+                    </span>
+                  </td>
+                  <td className="text-muted hidden px-4 py-4 text-sm md:table-cell xl:px-6">
+                    {formatarPeriodo(projeto.dataInicio, projeto.dataFim)}
+                  </td>
+                  <td className="text-ink hidden px-4 py-4 text-sm md:table-cell xl:px-6">
+                    {projeto.cliente?.nome ?? '—'}
+                  </td>
+                  <td className="hidden px-4 py-4 text-right sm:table-cell xl:px-6">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${classesStatus(projeto.status)}`}
+                    >
+                      {rotuloStatus(projeto.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

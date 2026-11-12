@@ -40,7 +40,7 @@ export function Cartao({
 
 export function Painel({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <section className="border-line bg-surface flex h-full flex-col border p-6">
+    <section className="border-line bg-surface flex h-full flex-col border p-4 sm:p-6">
       <h2 className="text-ink text-base font-medium">{titulo}</h2>
       <div className="mt-6 flex-1">{children}</div>
     </section>

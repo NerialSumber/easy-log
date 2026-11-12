@@ -76,7 +76,7 @@ export function MovimentoEstoque({
       onFechar={onFechar}
     >
       <form onSubmit={confirmar}>
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex flex-col gap-5 p-4 sm:p-6">
           <div className="bg-soft text-muted rounded-lg px-4 py-3 text-sm">
             Estoque atual:{' '}
             <span className="text-ink font-semibold">
